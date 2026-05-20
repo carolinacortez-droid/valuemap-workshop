@@ -408,49 +408,6 @@ function showToast(msg){
 }
 </script>
 
-<!-- QR CODE PAGE - shows when URL has ?qr param -->
-<div id="qr-page" style="display:none;font-family:'Segoe UI',sans-serif;background:#f0f4f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px">
-  <div style="font-size:20px;font-weight:700;color:#085041;margin-bottom:6px;text-align:center">Value Map Workshop — Excalia Max</div>
-  <div style="font-size:13px;color:#666;margin-bottom:32px;text-align:center">Escaneie o QR Code da sua equipe e responda no celular</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:700px;width:100%">
-    <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:6px solid #1D9E75">
-      <div style="font-size:22px;font-weight:700;color:#085041;margin-bottom:4px">Equipe Cerrado</div>
-      <div style="font-size:12px;color:#888;margin-bottom:16px">Escaneie para votar</div>
-      <canvas id="qr-c"></canvas>
-      <div style="font-size:10px;color:#aaa;word-break:break-all;background:#f8f8f6;border-radius:6px;padding:6px 8px;font-family:monospace;margin-top:12px">https://wonderful-rabanadas-24005a.netlify.app?team=Cerrado</div>
-    </div>
-    <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:6px solid #185FA5">
-      <div style="font-size:22px;font-weight:700;color:#0C447C;margin-bottom:4px">Equipe Sul</div>
-      <div style="font-size:12px;color:#888;margin-bottom:16px">Escaneie para votar</div>
-      <canvas id="qr-s"></canvas>
-      <div style="font-size:10px;color:#aaa;word-break:break-all;background:#f8f8f6;border-radius:6px;padding:6px 8px;font-family:monospace;margin-top:12px">https://wonderful-rabanadas-24005a.netlify.app?team=Sul</div>
-    </div>
-  </div>
-  <button onclick="window.print()" style="margin-top:32px;padding:12px 32px;font-size:14px;font-weight:600;border-radius:10px;border:none;background:#085041;color:#fff;cursor:pointer">Imprimir QR Codes</button>
-</div>
-
-<script>
-// Show QR page if URL has ?qr param
-if(new URLSearchParams(location.search).get('qr') !== null){
-  document.getElementById('qr-page').style.display='flex';
-  document.querySelector('.hdr') && (document.querySelector('.hdr').style.display='none');
-  document.getElementById('progress-bar') && (document.getElementById('progress-bar').style.display='none');
-  document.querySelector('.wrap') && (document.querySelector('.wrap').style.display='none');
-  
-  // Load QRCode lib dynamically
-  var s=document.createElement('script');
-  s.src='https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
-  s.onload=function(){
-    QRCode.toCanvas(document.getElementById('qr-c'),
-      'https://wonderful-rabanadas-24005a.netlify.app?team=Cerrado',
-      {width:200,margin:1,color:{dark:'#085041',light:'#ffffff'}});
-    QRCode.toCanvas(document.getElementById('qr-s'),
-      'https://wonderful-rabanadas-24005a.netlify.app?team=Sul',
-      {width:200,margin:1,color:{dark:'#0C447C',light:'#ffffff'}});
-  };
-  document.head.appendChild(s);
-}
-</script>
 
 </body>
 </html>
