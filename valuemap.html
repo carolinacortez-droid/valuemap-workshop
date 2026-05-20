@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Value Map — Excalia Max Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<!-- ══════════════════════════════════════════
+     FIREBASE CONFIG — SAME AS IN Workshop_Vote_Form.html
+     ══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue }
+                           from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ▼▼▼ PASTE YOUR FIREBASE CONFIG OBJECT HERE (same as in the vote form) ▼▼▼
+const firebaseConfig = {
+  apiKey:            "AIzaSyBAiGoOALn1R7TEL3RDjUHLMmVYdD-ASPI",
+  authDomain:        "valuemap-workshop.firebaseapp.com",
+  databaseURL:       "https://valuemap-workshop-default-rtdb.firebaseio.com",
+  projectId:         "valuemap-workshop",
+  storageBucket:     "valuemap-workshop.firebasestorage.app",
+  messagingSenderId: "195141627500",
+  appId:             "1:195141627500:web:8aa36c785c21e84b5cf249"
+};
+// ▲▲▲ END OF CONFIG ▲▲▲
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── Listen to votes in real time and compute averages ──
+function computeAvg(teamKey){
+  // teamKey = 'Cerrado' or 'Sul'
+  onValue(ref(db, `votes/${teamKey}`), snap => {
+    const votes = [];
+    snap.forEach(child => votes.push(child.val()));
+    if(!votes.length) return;
+
+    const nF = 7;   // FACTORS.length
+    const PRODS = ['Excalia Max','Fox Xpro','Fox Supra','Alade','Miravis Pro','Mitrion','Belyan','Blavity'];
+    const FIDS  = [1,2,3,4,5,6,7];
+
+    // Average weights per factor
+    const avgW = {};
+    FIDS.forEach(fid => {
+      const vals = votes.map(v => parseFloat(v.weights?.[fid]) || 0);
+      avgW[fid] = vals.reduce((a,b)=>a+b,0) / vals.length;
+    });
+
+    // Average scores per factor per product
+    const avgS = {};
+    FIDS.forEach(fid => {
+      avgS[fid] = {};
+      PRODS.forEach(p => {
+        const vals = votes.map(v => parseFloat(v.scores?.[fid]?.[p]) || 0);
+        avgS[fid][p] = vals.reduce((a,b)=>a+b,0) / vals.length;
+      });
+    });
+
+    // Fire update into the Value Map tool — wait until main script is ready
+    function tryApply(retries) {
+      if(typeof window.applyFirebaseVotes === 'function'){
+        window.applyFirebaseVotes(teamKey, avgW, avgS, votes.length);
+      } else if(retries > 0) {
+        setTimeout(() => tryApply(retries - 1), 200);
+      }
+    }
+    tryApply(30);
+  });
+}
+
+computeAvg('Cerrado');
+computeAvg('Sul');
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g9:#04342C;--g8:#085041;--g7:#0F6E56;--g5:#1D9E75;--g3:#5DCAA5;--g1:#9FE1CB;--g0:#E1F5EE;
+  --b8:#0C447C;--b6:#185FA5;--b4:#378ADD;--b2:#85B7EB;--b0:#E6F1FB;
+  --a7:#854F0B;--a5:#BA7517;--a0:#FAEEDA;
+  --r7:#791F1F;--r5:#A32D2D;--r0:#FCEBEB;
+  --gy9:#141414;--gy7:#333;--gy5:#666;--gy4:#888;--gy2:#ccc;--gy1:#f0f0ee;--gy0:#f7f7f5;
+  --bdr:rgba(0,0,0,0.09);--bdrm:rgba(0,0,0,0.16);
+  --r:10px;--rlg:14px;--sh:0 1px 4px rgba(0,0,0,0.06),0 4px 16px rgba(0,0,0,0.05);
+}
+html{min-height:100vh}
+body{font-family:'DM Sans',sans-serif;color:var(--gy9);background:linear-gradient(135deg,#e4f0eb 0%,#eef0ec 50%,#e8edf5 100%);min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:var(--g8);padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:300;box-shadow:0 2px 16px rgba(0,0,0,.25)}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-icon{width:38px;height:38px;border-radius:50%;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:600;color:var(--g9)}
+.brand-title{font-size:15px;font-weight:500;color:#fff}
+.brand-sub{font-size:11px;color:rgba(255,255,255,0.55);margin-top:1px}
+
+/* ── MAIN TABS ── */
+.main-tabs{display:flex;background:#fff;border-bottom:1px solid var(--bdr);overflow-x:auto;position:sticky;top:66px;z-index:200;box-shadow:var(--sh)}
+.mtab{padding:12px 18px;font-size:13px;font-weight:500;color:var(--gy4);cursor:pointer;border:none;background:transparent;font-family:inherit;border-bottom:2px solid transparent;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:7px}
+.mtab:hover:not(.active){color:var(--gy7);background:var(--gy0)}
+.mtab.active{color:var(--g8);border-bottom-color:var(--g5)}
+.mtab.tws.active{color:var(--g8);border-bottom-color:var(--g3)}
+.mtab.ted.active{color:var(--b8);border-bottom-color:var(--b6)}
+.mtab.tcmp.active{color:var(--a7);border-bottom-color:var(--a5)}
+.mdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:1px}
+.dro{background:var(--gy2)}.ded{background:var(--b2)}.dpr{background:var(--a5)}.dws{background:var(--g3)}.dcm{background:var(--a5)}
+
+.wrap{max-width:1100px;margin:0 auto;padding:20px 16px 80px}
+
+/* ── SHARED CARD ── */
+.card{background:#fff;border-radius:var(--rlg);box-shadow:var(--sh);border:1px solid var(--bdr);padding:20px 22px;margin-bottom:14px}
+.card-title{font-size:15px;font-weight:600;color:var(--gy9);margin-bottom:4px}
+.card-desc{font-size:13px;color:var(--gy5);margin-bottom:18px;line-height:1.6}
+.card-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px;gap:12px}
+.card-hd-title{font-size:14px;font-weight:600;color:var(--gy9)}
+.card-hd-desc{font-size:12px;color:var(--gy5);margin-top:3px;line-height:1.5}
+.badge{font-size:10px;font-weight:600;padding:3px 10px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.bro{background:var(--gy1);color:var(--gy5)}.bed{background:var(--b0);color:var(--b8)}.bpr{background:var(--a0);color:var(--a7)}
+
+/* ── STATUS BAR ── */
+.status-bar{display:flex;gap:12px;flex-wrap:wrap;background:var(--gy0);border-radius:var(--r);border:1px solid var(--bdr);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--gy5)}
+.status-bar strong{color:var(--gy9);font-weight:500}
+.s-ok{color:var(--g7)!important}.s-warn{color:var(--a5)!important}.s-bad{color:var(--r5)!important}
+.fb-badge{display:inline-flex;align-items:center;gap:5px;background:var(--g0);border:1px solid var(--g3);border-radius:20px;padding:2px 10px;font-size:11px;color:var(--g7);font-weight:500}
+.fb-dot{width:7px;height:7px;border-radius:50%;background:var(--g5);animation:fbpulse 1.8s ease-in-out infinite}
+@keyframes fbpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.85)}}
+
+/* ── WORKSHOP STYLES (preserves original Assessment look) ── */
+.progress-bar{display:flex;gap:0;margin-bottom:22px;background:#fff;border-radius:var(--rlg);box-shadow:var(--sh);border:1px solid var(--bdr);overflow:hidden}
+.step{flex:1;padding:13px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;border:none;background:transparent;font-family:inherit;border-right:1px solid var(--bdr);transition:background .15s}
+.step:last-child{border-right:none}
+.step:hover:not(.active){background:var(--gy0)}
+.step.active{background:var(--g0)}
+.step-num{width:26px;height:26px;border-radius:50%;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--gy1);color:var(--gy4);transition:all .2s}
+.step.active .step-num{background:var(--g5);color:#fff}
+.step.done .step-num{background:var(--g0);color:var(--g7)}
+.step-label{font-size:13px;font-weight:500;color:var(--gy4);text-align:left;line-height:1.3}
+.step.active .step-label{color:var(--g8)}
+.step.done .step-label{color:var(--g7)}
+.team-switcher{display:flex;gap:3px;background:rgba(255,255,255,0.1);padding:3px;border-radius:var(--r)}
+.team-btn{padding:6px 18px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.65);font-family:inherit;transition:all .18s}
+.team-btn.active{background:#fff;color:var(--g8)}
+.team-btn:hover:not(.active){color:#fff;background:rgba(255,255,255,0.18)}
+.wtable-head{display:grid;grid-template-columns:1fr 90px 150px;gap:12px;padding:0 0 8px;border-bottom:1px solid var(--bdr)}
+.col-h{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.07em}
+.col-h.c{text-align:center}
+.wrow{display:grid;grid-template-columns:1fr 90px 150px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr)}
+.wrow:last-child{border-bottom:none}
+.fname{font-size:13px;color:var(--gy7);line-height:1.4}
+.fcode{font-size:10px;font-weight:600;color:var(--gy2);font-family:'DM Mono',monospace;margin-bottom:2px}
+.num-input{width:80px;text-align:center;font-size:14px;font-weight:500;padding:6px 8px;border-radius:8px;border:1px solid var(--bdrm);background:var(--gy0);color:var(--gy9);font-family:'DM Mono',monospace;display:block;margin:0 auto;transition:border-color .15s}
+.num-input:focus{outline:none;border-color:var(--g3);background:var(--g0)}
+.bar-track{height:8px;background:var(--gy1);border-radius:4px;margin-bottom:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;transition:width .25s}
+.blabel{font-size:11px;color:var(--gy4);font-family:'DM Mono',monospace}
+.total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:12px 0 0;border-top:1px solid var(--bdr);margin-top:4px}
+.total-lbl{font-size:13px;color:var(--gy4)}
+.total-val{font-size:18px;font-weight:600;font-family:'DM Mono',monospace}
+.ok{color:var(--g7)}.bad{color:var(--r5)}.warn{color:var(--a5)}
+.scores-scroller{overflow-x:auto}
+.scores-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.scores-tbl th{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.07em;padding:8px 6px 10px;text-align:center;border-bottom:1px solid var(--bdr);white-space:nowrap;min-width:68px}
+.scores-tbl th:first-child{text-align:left;min-width:130px}
+.th-em{color:var(--g7)!important}
+.scores-tbl td{padding:8px 5px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+.scores-tbl tr:last-child td{border-bottom:none}
+.fshort{font-size:12px;font-weight:500;color:var(--gy7)}
+.ftiny{font-size:10px;color:var(--gy2);font-family:'DM Mono',monospace}
+.score-in{width:56px;text-align:center;font-size:13px;font-weight:500;padding:5px 6px;border-radius:7px;border:1px solid var(--bdrm);background:var(--gy0);color:var(--gy9);font-family:'DM Mono',monospace;display:block;margin:0 auto 4px;transition:border-color .15s}
+.score-in:focus{outline:none;border-color:var(--b2);background:var(--b0)}
+.em-col .score-in{border-color:var(--g3);background:var(--g0);color:var(--g8)}
+.sbar{height:4px;background:var(--gy1);border-radius:2px;overflow:hidden;width:56px;margin:0 auto}
+.sbar-fill{height:100%;border-radius:2px;transition:width .2s}
+.res-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:20px}
+.res-card{border-radius:var(--r);padding:14px 10px;text-align:center;border:1px solid var(--bdr);background:var(--gy0)}
+.res-card.em{background:var(--g0);border-color:var(--g3)}
+.res-rank{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.res-card.em .res-rank{color:var(--g3)}
+.res-pname{font-size:11px;font-weight:500;color:var(--gy5);margin-bottom:6px;line-height:1.3}
+.res-card.em .res-pname{color:var(--g7)}
+.res-score{font-size:24px;font-weight:600;color:var(--gy9);font-family:'DM Mono',monospace}
+.res-card.em .res-score{color:var(--g8)}
+.res-bar{height:4px;background:rgba(0,0,0,0.07);border-radius:2px;margin-top:8px;overflow:hidden}
+.res-fill{height:100%;border-radius:2px}
+.detail-wrap{overflow-x:auto;margin-top:6px}
+.dtbl{width:100%;border-collapse:collapse;font-size:12px}
+.dtbl th{font-size:10px;color:var(--gy2);text-transform:uppercase;letter-spacing:.06em;font-weight:600;padding:7px 8px;border-bottom:1px solid var(--bdr);text-align:center}
+.dtbl th:first-child,.dtbl th:nth-child(2){text-align:left}
+.dtbl td{padding:7px 8px;border-bottom:1px solid var(--bdr);text-align:center;font-family:'DM Mono',monospace;font-size:12px}
+.dtbl tr:last-child td{border-bottom:none}
+.dtbl td:first-child{text-align:left;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--gy7)}
+.dtbl td:nth-child(2){text-align:center;color:var(--gy4)}
+.sync-note{background:var(--g0);border:1px solid var(--g3);border-radius:var(--r);padding:10px 16px;margin-bottom:14px;font-size:12px;color:var(--g7);line-height:1.6}
+
+/* ── VALUE MAP TABLE ── */
+.tscroll{overflow-x:auto}
+table.vm{width:100%;border-collapse:collapse;font-size:12px}
+table.vm th{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.06em;padding:7px 7px 8px;text-align:center;border-bottom:1px solid var(--bdr);white-space:nowrap}
+table.vm th:first-child{text-align:left;min-width:200px;padding-left:0}
+table.vm th:nth-child(2){min-width:72px}
+table.vm th.em{color:var(--g7)}
+table.vm td{padding:6px 7px;border-bottom:1px solid var(--bdr);vertical-align:middle}
+table.vm tr:last-child td{border-bottom:none}
+table.vm td:first-child{padding-left:0}
+.num{text-align:center;font-family:'DM Mono',monospace;font-size:12px}
+.emc{background:rgba(29,158,117,.05)}.emc .num{color:var(--g7);font-weight:500}
+.fc{font-size:10px;color:var(--gy2);font-family:'DM Mono',monospace;margin-bottom:1px;font-weight:600}
+.fn{font-size:12px;color:var(--gy7);line-height:1.4}
+tr.rben td{background:var(--gy0)}
+tr.rben td:first-child{font-size:12px;font-weight:600;color:var(--gy7)}
+tr.rc td,tr.rp td,tr.rd td{background:rgba(186,117,23,.03)}
+tr.rc td:first-child,tr.rp td:first-child,tr.rd td:first-child{font-size:12px;color:var(--gy5)}
+tr.rf td{background:rgba(186,117,23,.08)}
+tr.rf td:first-child{font-size:12px;font-weight:500;color:var(--a7)}
+tr.rf .num{color:var(--a7);font-weight:500}
+tr.rdf td{background:rgba(186,117,23,.04)}
+tr.rdf td:first-child{font-size:12px;color:var(--gy5)}
+.pos{color:var(--g7)!important}.neg{color:var(--r5)!important}
+.si{width:54px;text-align:center;font-size:12px;padding:3px 4px;border-radius:6px;border:1px solid var(--bdrm);background:var(--gy0);color:var(--gy9);font-family:'DM Mono',monospace;display:block;margin:0 auto 3px;transition:border-color .15s}
+.si:focus{outline:none;border-color:var(--b2);background:var(--b0)}
+.si.em{border-color:var(--g3);background:var(--g0)}
+.si-bar{height:3px;background:var(--gy1);border-radius:2px;overflow:hidden;width:54px;margin:0 auto}
+.si-barf{height:100%;border-radius:2px;transition:width .2s}
+.wi{width:64px;text-align:center;font-size:12px;padding:4px 5px;border-radius:7px;border:1px solid var(--bdrm);background:var(--gy0);color:var(--gy9);font-family:'DM Mono',monospace;display:block;margin:0 auto;transition:border-color .15s}
+.wi:focus{outline:none;border-color:var(--b2);background:var(--b0)}
+
+/* ── SCATTER CHART ── */
+.sc-card{background:#fff;border-radius:var(--rlg);box-shadow:var(--sh);border:1px solid var(--bdr);padding:18px 20px;margin-bottom:14px}
+.sc-title{font-size:14px;font-weight:600;color:var(--gy9);margin-bottom:2px}
+.sc-sub{font-size:11px;color:var(--gy4);margin-bottom:14px}
+.sc-wrap{position:relative;height:440px}
+.sc-wrap-lg{position:relative;height:500px}
+
+/* ── PRICES TABLE ── */
+table.pt{width:100%;border-collapse:collapse;font-size:12px}
+table.pt th{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.06em;padding:8px 10px 9px;text-align:center;border-bottom:1px solid var(--bdr)}
+table.pt th:first-child{text-align:left}
+table.pt td{padding:7px 10px;border-bottom:1px solid var(--bdr);vertical-align:middle;font-size:12px}
+table.pt tr:last-child td{border-bottom:none}
+.ptin{width:76px;text-align:center;font-size:12px;padding:4px 5px;border-radius:6px;border:1px solid var(--bdrm);background:var(--gy0);color:var(--gy9);font-family:'DM Mono',monospace;transition:border-color .15s}
+.ptin:focus{outline:none;border-color:var(--a5);background:var(--a0)}
+.pnm{font-size:12px;font-weight:500;color:var(--gy7)}.pnm.em{color:var(--g7);font-weight:600}
+.trow{display:flex;justify-content:flex-end;align-items:center;gap:10px;padding:10px 0 0;border-top:1px solid var(--bdr);margin-top:4px}
+.tlbl{font-size:12px;color:var(--gy4)}
+.tval{font-size:17px;font-weight:600;font-family:'DM Mono',monospace}
+.tok{color:var(--g7)}.twrn{color:var(--a5)}.tbad{color:var(--r5)}
+
+/* ── BUTTONS ── */
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.btn{padding:9px 20px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;border:1px solid var(--bdrm);font-family:inherit;transition:all .15s}
+.btn-main{background:var(--g8);color:#fff;border-color:var(--g8)}.btn-main:hover{background:var(--g7)}
+.btn-export{background:var(--b0);color:var(--b8);border-color:var(--b2)}.btn-export:hover{background:var(--b2)}
+.btn-ghost{background:transparent;color:var(--gy5);border-color:var(--bdrm)}.btn-ghost:hover{background:var(--gy1)}
+.export-note{font-size:11px;color:var(--gy4);margin-top:6px;line-height:1.5}
+
+/* ── COMPARE ── */
+.seg-tog{display:flex;gap:3px;background:var(--gy1);padding:3px;border-radius:8px;margin-bottom:16px;width:fit-content}
+.seg-btn{padding:5px 18px;font-size:12px;font-weight:500;border-radius:6px;cursor:pointer;border:none;background:transparent;color:var(--gy5);font-family:inherit;transition:all .15s}
+.seg-btn.active{background:#fff;color:var(--g8);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+
+@media(max-width:640px){
+  .step-label{display:none}
+  .wtable-head,.wrow{grid-template-columns:1fr 70px 110px;gap:8px}
+  .hdr{flex-direction:column;gap:10px;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="brand">
+    <div class="brand-icon">EM</div>
+    <div>
+      <div class="brand-title">Value Map — Excalia Max Workshop</div>
+      <div class="brand-sub">Sumitomo · Posicionamento Competitivo</div>
+    </div>
+  </div>
+  <!-- Team switcher shown only on Workshop tab -->
+  <div class="team-switcher" id="team-sw" style="display:none">
+    <button class="team-btn active" onclick="setTeam('Cerrado')">Cerrado</button>
+    <button class="team-btn" onclick="setTeam('Sul')">Sul</button>
+  </div>
+</header>
+
+<nav class="main-tabs">
+  <button class="mtab tws active" onclick="goMain('ws')" id="mt-ws"><span class="mdot dws"></span>Exercício Workshop</button>
+  <button class="mtab" onclick="goMain('prices')" id="mt-prices"><span class="mdot dpr"></span>Preços e Doses</button>
+  <button class="mtab" onclick="goMain('farmC')" id="mt-farmC"><span class="mdot dro"></span>Produtores — Cerrado</button>
+  <button class="mtab" onclick="goMain('farmS')" id="mt-farmS"><span class="mdot dro"></span>Produtores — Sul</button>
+  <button class="mtab" onclick="goMain('exp')" id="mt-exp"><span class="mdot dro"></span>Especialistas</button>
+  <button class="mtab ted" onclick="goMain('sumiC')" id="mt-sumiC"><span class="mdot ded"></span>Sumitomo — Cerrado</button>
+  <button class="mtab ted" onclick="goMain('sumiS')" id="mt-sumiS"><span class="mdot ded"></span>Sumitomo — Sul</button>
+  <button class="mtab tcmp" onclick="goMain('cmp')" id="mt-cmp"><span class="mdot dcm"></span>Gráfico de Alinhamento</button>
+</nav>
+
+<div class="wrap">
+  <div class="status-bar" id="sbar"></div>
+
+  <!-- ══════════════════════════════════
+       WORKSHOP ASSESSMENT (original UI)
+  ══════════════════════════════════════ -->
+  <div id="s-ws">
+    <div class="sync-note">
+      ✓ <strong>Sincronização ao vivo.</strong> Cada peso e nota inseridos aqui atualiza <strong>Sumitomo — Cerrado</strong> and <strong>Sumitomo — Sul</strong> automaticamente.
+    </div>
+    <nav class="progress-bar">
+      <button class="step active" id="nav-w" onclick="wsGoTo('weights')">
+        <div class="step-num">1</div><div class="step-label">Importância dos Fatores</div>
+      </button>
+      <button class="step" id="nav-s" onclick="wsGoTo('scores')">
+        <div class="step-num">2</div><div class="step-label">Notas dos Produtos</div>
+      </button>
+      <button class="step" id="nav-r" onclick="wsGoTo('results')">
+        <div class="step-num">3</div><div class="step-label">Resultados e Exportar</div>
+      </button>
+    </nav>
+
+    <!-- Step 1: Weights -->
+    <div id="sec-weights">
+      <div class="card">
+        <div class="card-title">Importância relativa de cada fator de compra</div>
+        <div class="card-desc">Distribua 100% entre os 7 fatores de compra de fungicida para soja. O total deve ser exatamente 100%. Os pesos são definidos por região — use o seletor no canto superior direito.</div>
+        <div class="wtable-head">
+          <span class="col-h">Fator de compra</span>
+          <span class="col-h c">Importância (%)</span>
+          <span class="col-h">Distribution</span>
+        </div>
+        <div id="weights-rows"></div>
+        <div class="total-row">
+          <span class="total-lbl">Total</span>
+          <span class="total-val" id="w-total">0%</span>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-main" onclick="wsGoTo('scores')">Next: Notas dos Produtos →</button>
+        <button class="btn btn-ghost" onclick="resetWeights()">Limpar weights</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Scores -->
+    <div id="sec-scores" style="display:none">
+      <div class="card">
+        <div class="card-title">Avaliação de desempenho dos produtos</div>
+        <div class="card-desc">Para cada fator de compra, avalie cada produto de 0 a 10. O produto de referência em cada fator recebe nota 10 — os demais são avaliados relativamente a ele.</div>
+        <div class="scores-scroller" id="scores-wrap"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-main" onclick="wsGoTo('results')">See Results →</button>
+        <button class="btn btn-ghost" onclick="wsGoTo('weights')">← Back</button>
+        <button class="btn btn-ghost" onclick="resetScores()">Limpar scores</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Results -->
+    <div id="sec-results" style="display:none">
+      <div class="card">
+        <div class="card-title">Resultados ponderados por região</div>
+        <div class="card-desc">Essas notas já estão ao vivo nas abas <strong>Sumitomo — Cerrado</strong> and <strong>Sumitomo — Sul</strong> Você também pode exportar CSV para colar no arquivo Excel.</div>
+        <div id="results-content"></div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-export" onclick="wsExportCSV('Cerrado')">⬇ Baixar CSV — Cerrado</button>
+        <button class="btn btn-export" onclick="wsExportCSV('Sul')">⬇ Baixar CSV — Sul</button>
+        <button class="btn btn-ghost" onclick="wsGoTo('scores')">← Back</button>
+      </div>
+      <div class="export-note">CSV is ready to paste into the <em>Value Map Sumitomo_Cerrado</em> and <em>Value Map Sumitomo_Sul</em> tabs of the workshop Excel file.</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       PRICES & DOSES
+  ══════════════════════════════════════ -->
+  <div id="s-prices" style="display:none">
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Preços e Doses</div><div class="card-hd-desc">Edite para atualizar o Custo (US$/ha) em todas as abas.</div></div><span class="badge bpr">Input — alimenta todas as abas</span></div>
+      <div class="tscroll"><table class="pt"><thead><tr><th>Produto</th><th>Price R$/L</th><th>Price US$/L</th><th>Dose (L/ha)</th><th>Cost US$/ha</th><th>Part. Mercado</th></tr></thead><tbody id="pt-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       FARMERS CERRADO
+  ══════════════════════════════════════ -->
+  <div id="s-farmC" style="display:none">
+    <div class="sc-card">
+      <div class="sc-title">Value Map — Produtores / Cerrado</div>
+      <div class="sc-sub">X = Pontuação Benefício · Y = Custo US$/ha · Produtos abaixo da linha entregam mais valor do que custam</div>
+      <div class="sc-wrap"><canvas id="ch-farmC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Dados — Produtores / Cerrado</div><div class="card-hd-desc">Editável — altere pesos ou notas para atualizar o gráfico.</div></div><span class="badge bed">Editável</span></div>
+      <div class="tscroll" id="tbl-farmC"></div>
+      <div class="trow"><span class="tlbl">Total dos pesos</span><span class="tval" id="tot-farmC">0%</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       FARMERS SOUTH
+  ══════════════════════════════════════ -->
+  <div id="s-farmS" style="display:none">
+    <div class="sc-card">
+      <div class="sc-title">Value Map — Produtores / Sul</div>
+      <div class="sc-sub">X = Pontuação Benefício · Y = Custo US$/ha · Produtos abaixo da linha entregam mais valor do que custam</div>
+      <div class="sc-wrap"><canvas id="ch-farmS"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Data — Produtores / Sul</div><div class="card-hd-desc">Editável — altere pesos ou notas para atualizar o gráfico.</div></div><span class="badge bed">Editável</span></div>
+      <div class="tscroll" id="tbl-farmS"></div>
+      <div class="trow"><span class="tlbl">Total dos pesos</span><span class="tval" id="tot-farmS">0%</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       EXPERTS
+  ══════════════════════════════════════ -->
+  <div id="s-exp" style="display:none">
+    <div class="sc-card">
+      <div class="sc-title">Value Map — Especialistas</div>
+      <div class="sc-sub">X = Pontuação Benefício · Y = Custo US$/ha · Produtos abaixo da linha entregam mais valor do que custam</div>
+      <div class="sc-wrap"><canvas id="ch-exp"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Data — Especialistas</div><div class="card-hd-desc">Editável — altere pesos ou notas para atualizar o gráfico.</div></div><span class="badge bed">Editável</span></div>
+      <div class="tscroll" id="tbl-exp"></div>
+      <div class="trow"><span class="tlbl">Total dos pesos</span><span class="tval" id="tot-exp">0%</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       SUMITOMO CERRADO
+  ══════════════════════════════════════ -->
+  <div id="s-sumiC" style="display:none">
+    <div class="sync-note">✓ Alimentado automaticamente pelo <strong>Exercício Workshop</strong> Alterne para essa aba para editar pesos e notas.</div>
+    <div class="sc-card">
+      <div class="sc-title">Value Map — Sumitomo / Cerrado</div>
+      <div class="sc-sub">X = Pontuação Benefício · Y = Cost US$/ha · Updates in real time from Exercício Workshop</div>
+      <div class="sc-wrap"><canvas id="ch-sumiC"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Dados — Sumitomo / Cerrado</div><div class="card-hd-desc">Fed by Exercício Workshop. You can also edit directly here.</div></div><span class="badge bed">Ao vivo — input do workshop</span></div>
+      <div class="tscroll" id="tbl-sumiC"></div>
+      <div class="trow"><span class="tlbl">Total dos pesos</span><span class="tval" id="tot-sumiC">0%</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-export" onclick="vmExportCSV('sumiC')">⬇ Exportar CSV — Cerrado</button>
+      <button class="btn btn-ghost" onclick="resetSumi('sumiC')">Limpar</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       SUMITOMO SOUTH
+  ══════════════════════════════════════ -->
+  <div id="s-sumiS" style="display:none">
+    <div class="sync-note">✓ Alimentado automaticamente pelo <strong>Exercício Workshop</strong> Alterne para essa aba para editar pesos e notas.</div>
+    <div class="sc-card">
+      <div class="sc-title">Value Map — Sumitomo / Sul</div>
+      <div class="sc-sub">X = Pontuação Benefício · Y = Cost US$/ha · Updates in real time from Exercício Workshop</div>
+      <div class="sc-wrap"><canvas id="ch-sumiS"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Dados — Sumitomo / Sul</div><div class="card-hd-desc">Fed by Exercício Workshop. You can also edit directly here.</div></div><span class="badge bed">Ao vivo — input do workshop</span></div>
+      <div class="tscroll" id="tbl-sumiS"></div>
+      <div class="trow"><span class="tlbl">Total dos pesos</span><span class="tval" id="tot-sumiS">0%</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-export" onclick="vmExportCSV('sumiS')">⬇ Exportar CSV — Sul</button>
+      <button class="btn btn-ghost" onclick="resetSumi('sumiS')">Limpar</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════
+       ALIGNMENT CHART
+  ══════════════════════════════════════ -->
+  <div id="s-cmp" style="display:none">
+    <div class="card">
+      <div class="card-hd"><div><div class="card-hd-title">Alinhamento de Perspectivas</div><div class="card-hd-desc">Farmers, Especialistas and Sumitomo overlaid — each with its own linha de valor justo.</div></div><span class="badge bpr">Consolidado</span></div>
+      <div class="seg-tog">
+        <button class="seg-btn active" onclick="setCmp('C')">Cerrado</button>
+        <button class="seg-btn" onclick="setCmp('S')">Sul</button>
+      </div>
+      <div class="sc-wrap-lg"><canvas id="ch-cmp"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════
+const PRODUCTS = ['Excalia Max','Fox Xpro','Fox Supra','Alade','Miravis Pro','Mitrion','Belyan','Blavity'];
+const FACTORS = [
+  {id:1,short:'Espectro de Controle',name:'Espectro de controle – Controle de Ferrugem + Manchas Foliares (Mancha-alvo, Cercospora e Septoria)'},
+  {id:2,short:'Manchas Foliares',name:'Eficiência de controle de manchas foliares (Mancha-alvo e Septoria) – (controle acima de 80%)'},
+  {id:3,short:'Ferrugem',name:'Eficiência de controle de ferrugem – (controle acima de 80%)'},
+  {id:4,short:'Cercospora',name:'Eficiência de controle de Cercospora – (controle acima de 80%)'},
+  {id:5,short:'Antracnose',name:'Eficiência de controle de Antracnose – (controle acima de 80%)'},
+  {id:6,short:'Novo MOA',name:'Novo Modo de Ação / Molécula Nova'},
+  {id:7,short:'Fitotoxicidade',name:'Fitotoxicidade e Seletividade'}
+];
+const PCOL = ['#1D9E75','#185FA5','#378ADD','#BA7517','#A32D2D','#7F77DD','#D85A30','#5F5E5A'];
+
+// ═══════════════════════════════════════════════
+// PRICES
+// ═══════════════════════════════════════════════
+const PRC = {
+  'Excalia Max':{brl:103.53,usd:20.3, dose:0.5, share:0.2},
+  'Fox Xpro':   {brl:122.91,usd:24.1, dose:0.5, share:0.2},
+  'Fox Supra':  {brl:122.4, usd:24.0, dose:0.35,share:0.2},
+  'Alade':      {brl:111.69,usd:21.9, dose:0.5, share:0.2},
+  'Miravis Pro':{brl:138.67,usd:27.19,dose:0.85,share:0.2},
+  'Mitrion':    {brl:114.24,usd:22.4, dose:0.45,share:0.2},
+  'Belyan':     {brl:128.52,usd:25.2, dose:0.6, share:0.2},
+  'Blavity':    {brl:94.86, usd:18.6, dose:0.25,share:0.2}
+};
+const C = p => PRC[p].usd * PRC[p].dose;
+
+// ═══════════════════════════════════════════════
+// VALUE MAP DATA (Farmers & Especialistas pre-loaded, Sumitomo filled by workshop)
+// ═══════════════════════════════════════════════
+const D = {
+  farmC:{
+    // Weights as decimals (exact from Excel, sum=1.0)
+    w:[0.32941176470588235,0.1843137254901961,0.27450980392156865,0.09215686274509804,0.056862745098039215,0.03725490196078431,0.025490196078431372],
+    s:{
+      'Excalia Max':[7.682539682539683, 8.14132104454685,  7.904040404040404, 8.528645833333332, 8.08457711442786,  7.0, 9.290322580645162],
+      'Fox Xpro':   [9.297619047619047, 9.130664362519202, 8.965435606060606, 9.075683593750002, 8.86893656716418,  5.0, 8.201612903225806],
+      'Fox Supra':  [8.380952380952381, 10.0,              10.0,              10.0,              10.0,              7.0, 8.129032258064516],
+      'Alade':      [7.275132275132275, 8.928571428571429, 8.722643097643097, 9.246961805555555, 8.575870646766168, 3.0, 9.032258064516128],
+      'Miravis Pro':[7.682539682539683, 8.627752176139273, 8.75,              9.231770833333334, 8.66915422885572,  10.0,9.677419354838712],
+      'Mitrion':    [10.0,              8.43108504398827,  7.782369146005509, 8.025568181818182, 8.208955223880595, 3.0, 8.44574780058651 ],
+      'Belyan':     [8.020833333333334, 8.941772273425501, 9.107481060606059, 9.265136718750002, 8.961054104477613, 8.0, 9.798387096774194],
+      'Blavity':    [7.275132275132275, 8.107185526540365, 8.64057239057239,  8.810763888888888, 8.98217247097844,  3.0, 10.0              ]
+    }
+  },
+  farmS:{
+    // NOTE: Excel weights sum to 0.997 (not 1.0) — kept as-is to match Excel benefit calculation
+    w:[0.3,0.1,0.31,0.042,0.043,0.093,0.109],
+    s:{
+      'Excalia Max':[7.74928774928775,  8.993006993006993, 8.016194331983804, 8.20979020979021,  8.13986013986014,  7.0, 7.926988265971318],
+      'Fox Xpro':   [9.382716049382717, 8.557575757575759, 7.721052631578945, 8.082424242424242, 8.457575757575759, 5.0, 7.412429378531073],
+      'Fox Supra':  [9.481481481481481, 7.672727272727273, 5.614035087719298, 6.370909090909091, 6.836363636363637, 7.0, 6.508474576271187],
+      'Alade':      [8.74779541446208,  7.913419913419914, 7.44360902255639,  8.077922077922079, 8.093506493506494, 3.0, 8.264729620661823],
+      'Miravis Pro':[9.876543209876544, 8.80808080808081,  8.206627680311891, 8.86868686868687,  9.030303030303031, 10.0,8.436911487758945],
+      'Mitrion':    [8.88888888888889,  10.0,              10.0,              10.0,              10.0,              3.0, 8.135593220338983],
+      'Belyan':     [10.0,              8.232954545454547, 7.5,               7.931818181818182, 8.221590909090908, 8.0, 10.0              ],
+      'Blavity':    [9.086419753086421, 7.793939393939394, 6.970760233918128, 7.830303030303032, 7.648484848484849, 3.0, 9.401129943502823]
+    }
+  },
+  exp:{
+    // Weights as decimals (exact from Excel, sum=1.0)
+    w:[0.29,0.23,0.2,0.05,0.07,0.07,0.09],
+    s:{
+      'Excalia Max':[9.5,               7.5,               9.5,               8.0,               7.5,               7.0, 9.0               ],
+      'Fox Xpro':   [10.0,              8.736842105263158, 10.0,              10.0,              8.88888888888889,  5.0, 6.9               ],
+      'Fox Supra':  [8.695652173913045, 10.0,              9.879518072289155, 8.0,               10.0,              7.0, 7.1               ],
+      'Alade':      [7.82608695652174,  8.105263157894736, 9.518072289156626, 8.777777777777779, 8.444444444444445, 3.0, 10.0              ],
+      'Miravis Pro':[8.369565217391305, 8.631578947368421, 8.9,               8.5,               8.666666666666666, 10.0,9.1               ],
+      'Mitrion':    [6.0,               7.9,               8.0,               8.1,               8.444444444444445, 3.0, 7.3               ],
+      'Belyan':     [8.695652173913045, 8.31578947368421,  9.638554216867469, 8.555555555555555, 9.8,               8.0, 8.8               ],
+      'Blavity':    [7.934782608695653, 8.526315789473685, 8.915662650602409, 8.555555555555555, 8.444444444444445, 3.0, 8.6               ]
+    }
+  },
+  sumiC:{w:FACTORS.map(()=>0), s:Object.fromEntries(PRODUCTS.map(p=>[p,FACTORS.map(()=>'')]))},
+  sumiS:{w:FACTORS.map(()=>0), s:Object.fromEntries(PRODUCTS.map(p=>[p,FACTORS.map(()=>'')]))}
+};
+
+// ═══════════════════════════════════════════════
+// WORKSHOP STATE — mirrors D.sumiC / D.sumiS
+// ═══════════════════════════════════════════════
+let wsTeam = 'Cerrado';
+const WS = {};
+function initWS(){
+  ['Cerrado','Sul'].forEach(t=>{
+    WS[t]={weights:{},scores:{}};
+    FACTORS.forEach(f=>{
+      WS[t].weights[f.id]=0;
+      WS[t].scores[f.id]={};
+      PRODUCTS.forEach(p=>{ WS[t].scores[f.id][p]=''; });
+    });
+  });
+}
+initWS();
+
+// ═══════════════════════════════════════════════
+// BENEFÍCIO & LINHA DE VALOR JUSTO
+// ═══════════════════════════════════════════════
+// Benefit formula matches Excel exactly: SUMPRODUCT(w_i * score_i) / SUM(w_i)
+// For farmC, exp: weights sum to 1.0 → same as raw dot product
+// For farmS: weights sum to 0.997 (Excel rounding) → normalized gives slightly different result
+// Excel uses raw SUMPRODUCT(w_i * score_i) without dividing — we match that.
+// For Sumitomo (weights entered as % summing to 100): divide by 100 first, then raw product.
+function benefit(key, prod){
+  const d=D[key];
+  const isSumi=key.startsWith('sumi');
+  if(isSumi){
+    const tw=d.w.reduce((a,b)=>a+b,0); if(!tw) return 0;
+    return FACTORS.reduce((s,f,i)=>s+(d.w[i]/tw)*(parseFloat(d.s[prod][i])||0),0);
+  }
+  // Farmers / Especialistas: raw SUMPRODUCT (matches Excel exactly)
+  return FACTORS.reduce((s,f,i)=>s+d.w[i]*(parseFloat(d.s[prod][i])||0),0);
+}
+function allBens(key){ return PRODUCTS.map(p=>benefit(key,p)); }
+
+// Fair Cost formula (exact match to Excel logit model):
+//   fc_i = avg_cost + lambda * (ben_i - avg_ben)
+// where avg_cost = mean of all 8 actual costs = 11.8139375 (constant)
+// lambda is derived from the logit model parameters — specific to each perspective:
+//   farmC: lambda = 1.827842515658908
+//   farmS: lambda = 6.356876527587461
+//   exp:   lambda = 2.543361253642516
+//   sumiC/sumiS: use same lambda as corresponding Farmers perspective
+const LAMBDA = { farmC:1.827842515658908, farmS:6.356876527587461, exp:2.543361253642516,
+                 sumiC:1.827842515658908, sumiS:6.356876527587461 };
+// AVG_COST is the mean actual cost of all 8 products — updates dynamically with prices
+const avgCost = () => PRODUCTS.reduce((s,p)=>s+C(p),0)/PRODUCTS.length;
+
+// Fair Cost formula — exact match to Excel:
+//   AK35 = SLOPE(actual_costs, benefits)   → linear regression of cost on benefit
+//   AL35 = INTERCEPT(actual_costs, benefits)
+//   fair_cost_i = benefit_i * slope + intercept
+//
+// This is computed DYNAMICALLY from whatever benefits result from the current scores.
+// For Farmers/Especialistas the benefits are fixed so slope/intercept are fixed.
+// For Sumitomo they update as the user fills in scores.
+function fairLine(bens){
+  const costs = PRODUCTS.map(p => C(p));
+  const n = bens.length;
+  const sumX = bens.reduce((a,b)=>a+b,0);
+  const sumY = costs.reduce((a,b)=>a+b,0);
+  const sumXY = bens.reduce((s,b,i)=>s+b*costs[i],0);
+  const sumX2 = bens.reduce((s,b)=>s+b*b,0);
+  const denom = n*sumX2 - sumX*sumX;
+  if(!denom) return {slope:0, intercept:sumY/n, fc:costs.slice()};
+  const slope = (n*sumXY - sumX*sumY) / denom;
+  const intercept = (sumY - slope*sumX) / n;
+  const fc = bens.map(b => slope*b + intercept);
+  return {slope, intercept, fc};
+}
+
+// ═══════════════════════════════════════════════
+// COLOR HELPERS
+// ═══════════════════════════════════════════════
+function scCol(v){if(v>=8.5)return'#1D9E75';if(v>=6.5)return'#378ADD';if(v>=5)return'#BA7517';return'#E24B4A';}
+function wsScoreC(v){if(v>=8.5)return'#1D9E75';if(v>=6)return'#378ADD';if(v>=4)return'#BA7517';return'#E24B4A';}
+function barC(v){if(v>=35)return'#1D9E75';if(v>=20)return'#378ADD';if(v>=10)return'#BA7517';return'#E24B4A';}
+
+// ═══════════════════════════════════════════════
+// CHART ENGINE
+// ═══════════════════════════════════════════════
+const CH={};
+function destroyChart(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+const labelPlugin={id:'lbl',afterDatasetsDraw(chart){
+  const ctx=chart.ctx;
+  chart.data.datasets.forEach((ds,di)=>{
+    if(!ds._prod) return;
+    const meta=chart.getDatasetMeta(di); if(meta.hidden) return;
+    meta.data.forEach(pt=>{
+      ctx.save();
+      ctx.font=ds._em?'bold 11px DM Sans,sans-serif':'10px DM Sans,sans-serif';
+      ctx.fillStyle=ds.borderColor; ctx.textAlign='center';
+      ctx.fillText(ds.label,pt.x,pt.y-(ds._em?17:13));
+      ctx.restore();
+    });
+  });
+}};
+
+function drawScatter(canvasId, key){
+  destroyChart(canvasId);
+  const ctx=document.getElementById(canvasId); if(!ctx) return;
+  const bens=allBens(key);
+  const {slope,intercept}=fairLine(bens);
+  const minX=Math.max(0,Math.min(...bens)-0.4), maxX=Math.max(...bens)+0.4;
+  const maxY=Math.max(...PRODUCTS.map(p=>C(p)))*1.18;
+
+  CH[canvasId]=new Chart(ctx,{type:'scatter',
+    data:{datasets:[
+      {type:'line',label:'Linha de Valor Justo',data:[{x:minX,y:slope*minX+intercept},{x:maxX,y:slope*maxX+intercept}],
+       borderColor:'rgba(186,117,23,0.65)',borderWidth:1.5,borderDash:[7,4],pointRadius:0,fill:false,tension:0,_prod:false},
+      ...PRODUCTS.map((p,i)=>({
+        label:p,_prod:true,_em:p==='Excalia Max',
+        data:[{x:bens[i],y:C(p)}],
+        backgroundColor:p==='Excalia Max'?PCOL[i]:PCOL[i]+'bb',
+        borderColor:PCOL[i],borderWidth:p==='Excalia Max'?2.5:1.5,
+        pointRadius:p==='Excalia Max'?13:9,pointHoverRadius:p==='Excalia Max'?15:11,
+        pointStyle:p==='Excalia Max'?'star':'circle'
+      }))
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},
+      plugins:{legend:{display:false},
+        tooltip:{callbacks:{title:c=>c[0].dataset._prod?c[0].dataset.label:'',label:c=>c.dataset._prod?[`Benefício: ${c.parsed.x.toFixed(2)}`,`Cost: $${c.parsed.y.toFixed(2)}/ha`]:null},
+        backgroundColor:'rgba(15,15,15,0.88)',titleFont:{size:12,weight:'bold'},bodyFont:{size:11},padding:10,cornerRadius:8}},
+      scales:{
+        x:{title:{display:true,text:'Pontuação Benefício',font:{size:11},color:'#888'},min:minX,max:maxX,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#888'}},
+        y:{title:{display:true,text:'Custo (US$/ha)',font:{size:11},color:'#888'},min:0,max:maxY,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#888'}}
+      }},plugins:[labelPlugin]});
+}
+
+function refreshChart(key){
+  const ids={farmC:'ch-farmC',farmS:'ch-farmS',exp:'ch-exp',sumiC:'ch-sumiC',sumiS:'ch-sumiS'};
+  if(ids[key]&&CH[ids[key]]) drawScatter(ids[key],key);
+  if(CH['ch-cmp']) drawCompare(cmpReg);
+}
+
+// ═══════════════════════════════════════════════
+// COMPARE CHART
+// ═══════════════════════════════════════════════
+let cmpReg='C';
+function setCmp(r){
+  cmpReg=r;
+  document.querySelectorAll('.seg-btn').forEach((b,i)=>b.classList.toggle('active',['C','S'][i]===r));
+  drawCompare(r);
+}
+function drawCompare(r){
+  destroyChart('ch-cmp');
+  const ctx=document.getElementById('ch-cmp'); if(!ctx) return;
+  const fk=r==='C'?'farmC':'farmS', sk=r==='C'?'sumiC':'sumiS';
+  const fb=allBens(fk),eb=allBens('exp'),sb=allBens(sk);
+  const fl=fairLine(fb),el=fairLine(eb),sl=fairLine(sb);
+  const allX=[...fb,...eb,...sb];
+  const minX=Math.max(0,Math.min(...allX)-0.4),maxX=Math.max(...allX)+0.4;
+  const maxY=Math.max(...PRODUCTS.map(p=>C(p)))*1.18;
+  const lp2={id:'lbl2',afterDatasetsDraw(chart){const c2=chart.ctx;chart.data.datasets.forEach((ds,di)=>{if(!ds._ps)return;const meta=chart.getDatasetMeta(di);if(meta.hidden)return;meta.data.forEach((pt,pi)=>{c2.save();c2.font='9px DM Sans,sans-serif';c2.fillStyle=ds.borderColor;c2.textAlign='center';c2.fillText(PRODUCTS[pi].split(' ')[0],pt.x,pt.y-12);c2.restore();});});}};
+  CH['ch-cmp']=new Chart(ctx,{type:'scatter',
+    data:{datasets:[
+      {type:'line',label:'Linha — Produtores',data:[{x:minX,y:fl.slope*minX+fl.intercept},{x:maxX,y:fl.slope*maxX+fl.intercept}],borderColor:'#185FA5',borderWidth:1.5,borderDash:[7,4],pointRadius:0,fill:false,_ps:false},
+      {type:'line',label:'Fair — Especialistas', data:[{x:minX,y:el.slope*minX+el.intercept},{x:maxX,y:el.slope*maxX+el.intercept}],borderColor:'#7F77DD',borderWidth:1.5,borderDash:[4,3],pointRadius:0,fill:false,_ps:false},
+      {type:'line',label:'Linha — Sumitomo',data:[{x:minX,y:sl.slope*minX+sl.intercept},{x:maxX,y:sl.slope*maxX+sl.intercept}],borderColor:'#1D9E75',borderWidth:1.5,borderDash:[2,3],pointRadius:0,fill:false,_ps:false},
+      {label:'Farmers',data:PRODUCTS.map((p,i)=>({x:fb[i],y:C(p)})),backgroundColor:'#185FA599',borderColor:'#185FA5',borderWidth:1.5,pointRadius:8,pointStyle:'circle',_ps:true},
+      {label:'Especialistas', data:PRODUCTS.map((p,i)=>({x:eb[i],y:C(p)})),backgroundColor:'#7F77DD99',borderColor:'#7F77DD',borderWidth:1.5,pointRadius:8,pointStyle:'triangle',_ps:true},
+      {label:'Sumitomo',data:PRODUCTS.map((p,i)=>({x:sb[i],y:C(p)})),backgroundColor:'#1D9E7599',borderColor:'#1D9E75',borderWidth:2,pointRadius:11,pointStyle:'star',_ps:true}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},
+      plugins:{legend:{display:true,position:'bottom',labels:{font:{size:11},boxWidth:12,padding:14}},
+        tooltip:{callbacks:{title:c=>c[0].dataset._ps?`${c[0].dataset.label} — ${PRODUCTS[c[0].dataIndex]}`:null,label:c=>c.dataset._ps?[`Benefício: ${c.parsed.x.toFixed(2)}`,`Cost: $${c.parsed.y.toFixed(2)}/ha`]:null},backgroundColor:'rgba(15,15,15,0.88)',titleFont:{size:12,weight:'bold'},bodyFont:{size:11},padding:10,cornerRadius:8}},
+      scales:{
+        x:{title:{display:true,text:'Pontuação Benefício',font:{size:11},color:'#888'},min:minX,max:maxX,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#888'}},
+        y:{title:{display:true,text:'Custo (US$/ha)',font:{size:11},color:'#888'},min:0,max:maxY,grid:{color:'rgba(0,0,0,0.05)'},ticks:{font:{size:10},color:'#888'}}
+      }},plugins:[lp2]});
+}
+
+// ═══════════════════════════════════════════════
+// MAIN NAVIGATION
+// ═══════════════════════════════════════════════
+const TAB_CHART={farmC:'ch-farmC',farmS:'ch-farmS',exp:'ch-exp',sumiC:'ch-sumiC',sumiS:'ch-sumiS'};
+function goMain(id){
+  document.querySelectorAll('[id^="s-"]').forEach(s=>s.style.display='none');
+  document.querySelectorAll('.mtab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('s-'+id).style.display='';
+  document.getElementById('mt-'+id).classList.add('active');
+  // Team switcher only on workshop tab
+  document.getElementById('team-sw').style.display=id==='ws'?'flex':'none';
+  setTimeout(()=>{
+    if(TAB_CHART[id]) drawScatter(TAB_CHART[id],id);
+    if(id==='cmp') drawCompare(cmpReg);
+    // Re-render Sumitomo tables when tab is opened (picks up any Firebase data)
+    if(id==='sumiC' || id==='sumiS') renderVmTable(id);
+  },40);
+  updateStatus();
+}
+
+// ═══════════════════════════════════════════════
+// STATUS BAR
+// ═══════════════════════════════════════════════
+function updateStatus(){
+  const wC=wsWeightTotal('Cerrado'),wS=wsWeightTotal('Sul');
+  const tot=FACTORS.length*PRODUCTS.length;
+  const scC=wsScoreCount('Cerrado'),scS=wsScoreCount('Sul');
+  const fbC=FB_COUNTS['Cerrado']||0, fbS=FB_COUNTS['Sul']||0;
+  document.getElementById('sbar').innerHTML=
+    `<span><span class="fb-badge"><span class="fb-dot"></span>Live</span></span>`+
+    `<span>Cerrado: <strong>${fbC} voto${fbC!==1?'s':''}</strong></span>`+
+    `<span>Sul: <strong>${fbS} voto${fbS!==1?'s':''}</strong></span>`+
+    `<span>Pesos C: <strong class="${wC===100?'s-ok':wC>0?'s-warn':''}">${wC}%</strong></span>`+
+    `<span>Pesos S: <strong class="${wS===100?'s-ok':wS>0?'s-warn':''}">${wS}%</strong></span>`;
+}
+function wsWeightTotal(t){return Math.round(Object.values(WS[t].weights).reduce((a,b)=>a+b,0));}
+function wsScoreCount(t){let c=0;FACTORS.forEach(f=>PRODUCTS.forEach(p=>{if(parseFloat(WS[t].scores[f.id][p])>0)c++;}));return c;}
+
+// ═══════════════════════════════════════════════
+// WORKSHOP LOGIC (preserves original Assessment UI)
+// ═══════════════════════════════════════════════
+function setTeam(t){
+  wsTeam=t;
+  document.querySelectorAll('.team-btn').forEach((b,i)=>b.classList.toggle('active',['Cerrado','Sul'][i]===t));
+  const active=['weights','scores','results'].find(s=>document.getElementById('sec-'+s).style.display!=='none')||'weights';
+  wsGoTo(active);
+}
+
+function wsGoTo(sec){
+  ['weights','scores','results'].forEach(s=>{
+    document.getElementById('sec-'+s).style.display=s===sec?'':'none';
+    const n=document.getElementById('nav-'+s[0]);
+    n.classList.toggle('active',s===sec);
+    n.classList.toggle('done',s!==sec&&wsIsDone(s));
+  });
+  if(sec==='weights') renderWeights();
+  if(sec==='scores') renderScores();
+  if(sec==='results') renderResults();
+  updateStatus();
+}
+function wsIsDone(sec){
+  if(sec==='weights') return wsWeightTotal(wsTeam)===100;
+  return false;
+}
+
+// WEIGHTS
+function wsWeightTotalTeam(){return Math.round(Object.values(WS[wsTeam].weights).reduce((a,b)=>a+b,0));}
+function renderWeights(){
+  document.getElementById('weights-rows').innerHTML=FACTORS.map(f=>{
+    const v=WS[wsTeam].weights[f.id]||0;
+    return`<div class="wrow">
+      <div><div class="fcode">F${f.id}</div><div class="fname">${f.name}</div></div>
+      <div><input type="number" class="num-input" min="0" max="100" step="1" value="${v||''}" placeholder="0"
+        oninput="updateW(${f.id},this.value)" onchange="updateW(${f.id},this.value)"/></div>
+      <div><div class="bar-track"><div class="bar-fill" id="wb${f.id}" style="width:${Math.min(v,100)}%;background:${barC(v)}"></div></div>
+      <div class="blabel">${v}%</div></div>
+    </div>`;
+  }).join('');
+  refreshWTotal();
+}
+function updateW(fid,val){
+  const v=Math.max(0,Math.min(100,parseFloat(val)||0));
+  WS[wsTeam].weights[fid]=v;
+  // ── SYNC TO VALUE MAP ──
+  const vmKey=wsTeam==='Cerrado'?'sumiC':'sumiS';
+  const fi=FACTORS.findIndex(f=>f.id===fid);
+  D[vmKey].w[fi]=v;
+  // Update weight input in Sumitomo VM table
+  const wi=document.getElementById(`wi_${vmKey}_${fi}`);
+  if(wi) wi.value=v;
+  const bar=document.getElementById('wb'+fid);
+  if(bar){bar.style.width=v+'%';bar.style.background=barC(v);bar.closest('.wrow').querySelector('.blabel').textContent=v+'%';}
+  refreshWTotal();
+  refreshVmBenRow(vmKey);
+  updateStatus();
+}
+function refreshWTotal(){
+  const t=wsWeightTotalTeam();
+  const el=document.getElementById('w-total');
+  el.textContent=t+'%';
+  el.className='total-val '+(t===100?'ok':t>100?'bad':'warn');
+  // sync VM total badge
+  const vmKey=wsTeam==='Cerrado'?'sumiC':'sumiS';
+  const tv=document.getElementById('tot-'+vmKey);
+  if(tv){tv.textContent=t+'%';tv.className='tval '+(t===100?'tok':t>100?'tbad':'twrn');}
+}
+function resetWeights(){
+  FACTORS.forEach(f=>{WS[wsTeam].weights[f.id]=0;});
+  const vmKey=wsTeam==='Cerrado'?'sumiC':'sumiS';
+  D[vmKey].w=FACTORS.map(()=>0);
+  renderWeights(); refreshVmBenRow(vmKey); updateStatus();
+}
+
+// SCORES
+function renderScores(){
+  let h=`<table class="scores-tbl"><thead><tr><th>Factor</th>
+    ${PRODUCTS.map(p=>`<th class="${p==='Excalia Max'?'th-em':''}">${p}</th>`).join('')}
+  </tr></thead><tbody>`;
+  FACTORS.forEach(f=>{
+    h+=`<tr><td><div class="fshort">${f.short}</div><div class="ftiny">F${f.id}</div></td>
+    ${PRODUCTS.map(p=>{
+      const v=WS[wsTeam].scores[f.id][p]; const nv=parseFloat(v)||0; const isE=p==='Excalia Max';
+      return`<td class="${isE?'em-col':''}" style="text-align:center">
+        <input type="number" class="score-in" min="0" max="10" step="0.5" value="${v}" placeholder="—"
+          oninput="updateS(${f.id},'${p}',this.value)" onchange="updateS(${f.id},'${p}',this.value)"/>
+        <div class="sbar"><div class="sbar-fill" id="sb${f.id}_${p.replace(/\s/g,'_')}"
+          style="width:${nv/10*100}%;background:${isE?'#1D9E75':wsScoreC(nv)}"></div></div>
+      </td>`;
+    }).join('')}</tr>`;
+  });
+  h+='</tbody></table>';
+  document.getElementById('scores-wrap').innerHTML=h;
+}
+function updateS(fid,prod,val){
+  const v=val===''?'':Math.max(0,Math.min(10,parseFloat(val)||0));
+  WS[wsTeam].scores[fid][prod]=v;
+  // ── SYNC TO VALUE MAP ──
+  const vmKey=wsTeam==='Cerrado'?'sumiC':'sumiS';
+  const fi=FACTORS.findIndex(f=>f.id===fid);
+  D[vmKey].s[prod][fi]=v;
+  const nv=parseFloat(v)||0; const isE=prod==='Excalia Max';
+  // Update bar in workshop table
+  const bar=document.getElementById('sb'+fid+'_'+prod.replace(/\s/g,'_'));
+  if(bar){bar.style.width=(nv/10*100)+'%';bar.style.background=isE?'#1D9E75':wsScoreC(nv);}
+  // Update score input + bar in Sumitomo VM table
+  const si=document.getElementById(`si_${vmKey}_${fi}_${prod.replace(/ /g,'_')}`);
+  if(si) si.value=v;
+  const vbar=document.getElementById(`vb${vmKey}${fi}${prod.replace(/ /g,'_')}`);
+  if(vbar){vbar.style.width=(nv/10*100)+'%';vbar.style.background=isE?'#1D9E75':scCol(nv);}
+  refreshVmBenRow(vmKey);
+  updateStatus();
+}
+function resetScores(){
+  FACTORS.forEach(f=>PRODUCTS.forEach(p=>WS[wsTeam].scores[f.id][p]=''));
+  const vmKey=wsTeam==='Cerrado'?'sumiC':'sumiS';
+  D[vmKey].s=Object.fromEntries(PRODUCTS.map(p=>[p,FACTORS.map(()=>'')]));
+  renderScores(); refreshVmBenRow(vmKey); updateStatus();
+}
+
+// RESULTS
+function calcWS(t,prod){
+  const totalW=Object.values(WS[t].weights).reduce((a,b)=>a+b,0);
+  if(!totalW) return null;
+  return FACTORS.reduce((s,f)=>s+(WS[t].weights[f.id]/totalW)*(parseFloat(WS[t].scores[f.id][prod])||0),0);
+}
+function renderResults(){
+  const cont=document.getElementById('results-content');
+  const totalW=Object.values(WS[wsTeam].weights).reduce((a,b)=>a+b,0);
+  if(!totalW){cont.innerHTML='<div style="padding:28px 0;text-align:center;color:var(--gy2);font-size:13px">Complete Step 1 (weights) before viewing results.</div>';return;}
+  const results=PRODUCTS.map(p=>({p,s:calcWS(wsTeam,p)})).sort((a,b)=>b.s-a.s);
+  const mx=results[0].s||1;
+  let h='<div class="res-grid">';
+  results.forEach((r,i)=>{
+    const isE=r.p==='Excalia Max';
+    h+=`<div class="res-card${isE?' em':''}"><div class="res-rank">#${i+1}</div>
+      <div class="res-pname">${r.p}</div><div class="res-score">${r.s.toFixed(2)}</div>
+      <div class="res-bar"><div class="res-fill" style="width:${(r.s/mx*100).toFixed(0)}%;background:${isE?'#1D9E75':wsScoreC(r.s)}"></div></div></div>`;
+  });
+  h+='</div>';
+  h+=`<div style="font-size:13px;font-weight:600;color:var(--gy7);margin:16px 0 10px">Score breakdown — ${wsTeam==='Sul'?'Sul':wsTeam}</div>
+  <div class="detail-wrap"><table class="dtbl"><thead><tr><th>Factor</th><th>Weight</th>
+    ${PRODUCTS.map(p=>`<th${p==='Excalia Max'?' style="color:var(--g7)"':''}>${p}</th>`).join('')}
+  </tr></thead><tbody>`;
+  FACTORS.forEach(f=>{
+    const w=WS[wsTeam].weights[f.id]||0;
+    h+=`<tr><td>${f.short}</td><td>${w}%</td>
+      ${PRODUCTS.map(p=>{const v=parseFloat(WS[wsTeam].scores[f.id][p])||0;const isE=p==='Excalia Max';
+        return`<td style="color:${isE?'var(--g7)':wsScoreC(v)};font-weight:${isE?600:400}">${v>0?v.toFixed(1):'—'}</td>`;}).join('')}</tr>`;
+  });
+  h+='</tbody></table></div>';
+  cont.innerHTML=h;
+}
+function wsExportCSV(t){
+  const rows=[['Region','Factor','Importance (%)',...PRODUCTS,'Weighted Score (Excalia Max)'].join(';')];
+  FACTORS.forEach(f=>{
+    const w=WS[t].weights[f.id]||0;
+    const scores=PRODUCTS.map(p=>parseFloat(WS[t].scores[f.id][p])||0);
+    const wsE=calcWS(t,'Excalia Max');
+    rows.push([t==='Sul'?'Sul':t,f.name,w,...scores,wsE!==null?wsE.toFixed(4):0].join(';'));
+  });
+  rows.push(['','BENEFIT','',...PRODUCTS.map(p=>{const v=calcWS(t,p);return v!==null?v.toFixed(4):0}),''].join(';'));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download=`ValueMap_Sumitomo_${t==='Sul'?'Sul':t}.csv`;a.click();
+}
+
+// ═══════════════════════════════════════════════
+// VALUE MAP TABLE RENDERER (all tabs)
+// ═══════════════════════════════════════════════
+function renderVmTable(key){
+  const el=document.getElementById('tbl-'+key); if(!el) return;
+  const d=D[key], bens=allBens(key), {fc}=fairLine(bens);
+  const isSumi=key.startsWith('sumi');
+
+  let h=`<table class="vm"><thead><tr><th>Fator de compra</th><th>Importância (%)</th>
+    ${PRODUCTS.map(p=>`<th class="${p==='Excalia Max'?'em':''}">${p}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  FACTORS.forEach((f,i)=>{
+    const w=d.w[i];
+    // Farmers/Especialistas: weights stored as decimals (0-1), display as %
+    // Sumitomo: weights stored as percentages (0-100)
+    const wDisp = isSumi ? w : w*100;
+    const wStep = isSumi ? '1' : '0.01';
+    const wMax  = isSumi ? '100' : '100';
+    h+=`<tr><td><div class="fc">F${f.id}</div><div class="fn">${f.name}</div></td>
+      <td><input type="number" class="wi" id="wi_${key}_${i}" min="0" max="${wMax}" step="${wStep}"
+        value="${+wDisp.toFixed(4)}" placeholder="0"
+        oninput="vmUpdW('${key}',${i},this.value)"/></td>
+      ${PRODUCTS.map(p=>{const v=d.s[p][i],nv=parseFloat(v)||0,em=p==='Excalia Max';
+        return`<td class="${em?'emc':''}">
+          <input type="number" class="si${em?' em':''}" id="si_${key}_${i}_${p.replace(/ /g,'_')}" min="0" max="10" step="0.5" value="${v}" placeholder="—"
+            oninput="vmUpdS('${key}',${i},'${p}',this.value)"/>
+          <div class="si-bar"><div class="si-barf" id="vb${key}${i}${p.replace(/ /g,'_')}"
+            style="width:${nv/10*100}%;background:${em?'#1D9E75':scCol(nv)}"></div></div>
+        </td>`;}).join('')}</tr>`;
+  });
+
+  h+=`<tr class="rben"><td>BENEFÍCIO (pontuação ponderada)</td><td class="num">—</td>
+    ${PRODUCTS.map((p,i)=>{const v=bens[i],em=p==='Excalia Max';
+      return`<td class="num${em?' emc':''}" id="vben_${key}_${i}"><span style="color:${em?'var(--g7)':scCol(v)};font-weight:${em?600:400}">${v.toFixed(1)}</span></td>`;}).join('')}</tr>`;
+  h+=`<tr class="rc"><td>Custo (US$/ha)</td><td>—</td>${PRODUCTS.map(p=>`<td class="num">${C(p).toFixed(1)}</td>`).join('')}</tr>`;
+  h+=`<tr class="rp"><td>Preço (US$/L)</td><td>—</td>${PRODUCTS.map(p=>`<td class="num">${PRC[p].usd.toFixed(1)}</td>`).join('')}</tr>`;
+  h+=`<tr class="rd"><td>Dose (L/ha)</td><td>—</td>${PRODUCTS.map(p=>`<td class="num">${PRC[p].dose}</td>`).join('')}</tr>`;
+  h+=`<tr class="rf"><td>CUSTO JUSTO (US$/ha)<small style="font-weight:400;color:var(--gy4);font-size:10px"> — calculado</small></td><td>—</td>
+    ${fc.map((v,i)=>`<td class="num" id="vfc_${key}_${i}">${v>0?v.toFixed(1):'—'}</td>`).join('')}</tr>`;
+  const df=fc.map((f,i)=>C(PRODUCTS[i])-f);
+  h+=`<tr class="rdf"><td>Custo Atual vs Custo Justo</td><td>—</td>
+    ${df.map((v,i)=>`<td class="num" id="vdf_${key}_${i}"><span class="${v>=0?'neg':'pos'}">${v>=0?'+':''}${v.toFixed(1)}</span></td>`).join('')}</tr>`;
+  h+='</tbody></table>';
+  el.innerHTML=h;
+
+  const wsum=d.w.reduce((a,b)=>a+b,0);
+  const tDisp=isSumi?Math.round(wsum):(wsum*100).toFixed(1);
+  const isOk=isSumi?wsum===100:Math.abs(wsum-1)<0.001;
+  const isOver=isSumi?wsum>100:wsum>1.001;
+  const tv=document.getElementById('tot-'+key);
+  if(tv){tv.textContent=tDisp+'%';tv.className='tval '+(isOk?'tok':isOver?'tbad':'twrn');}
+}
+
+function vmUpdW(key,i,v){
+  const isSumi=key.startsWith('sumi');
+  // Farmers/Especialistas: user enters %, stored as decimal; Sumitomo: stored as %
+  const raw=parseFloat(v)||0;
+  D[key].w[i]=isSumi ? Math.max(0,Math.min(100,raw)) : Math.max(0,Math.min(1,raw/100));
+  refreshVmBenRow(key);
+  const wsum=D[key].w.reduce((a,b)=>a+b,0);
+  const tDisp=isSumi?Math.round(wsum):(wsum*100).toFixed(1);
+  const isOk=isSumi?wsum===100:Math.abs(wsum-1)<0.001;
+  const isOver=isSumi?wsum>100:wsum>1.001;
+  const tv=document.getElementById('tot-'+key);
+  if(tv){tv.textContent=tDisp+'%';tv.className='tval '+(isOk?'tok':isOver?'tbad':'twrn');}
+}
+function vmUpdS(key,i,p,v){
+  const val=v===''?'':Math.max(0,Math.min(10,parseFloat(v)||0));
+  D[key].s[p][i]=val;
+  const nv=parseFloat(val)||0,em=p==='Excalia Max';
+  const bar=document.getElementById(`vb${key}${i}${p.replace(/ /g,'_')}`);
+  if(bar){bar.style.width=(nv/10*100)+'%';bar.style.background=em?'#1D9E75':scCol(nv);}
+  refreshVmBenRow(key);
+}
+function refreshVmBenRow(key){
+  const bens=allBens(key),{fc}=fairLine(bens);
+  PRODUCTS.forEach((p,i)=>{
+    const v=bens[i],em=p==='Excalia Max';
+    const el=document.getElementById(`vben_${key}_${i}`);
+    if(el) el.innerHTML=`<span style="color:${em?'var(--g7)':scCol(v)};font-weight:${em?600:400}">${v.toFixed(1)}</span>`;
+    const fe=document.getElementById(`vfc_${key}_${i}`);
+    if(fe) fe.textContent=fc[i]>0?fc[i].toFixed(1):'—';
+    const de=document.getElementById(`vdf_${key}_${i}`);
+    if(de){const d=C(PRODUCTS[i])-fc[i];de.innerHTML=`<span class="${d>=0?'neg':'pos'}">${d>=0?'+':''}${d.toFixed(1)}</span>`;}
+  });
+  refreshChart(key);
+}
+function resetSumi(key){
+  const r=key==='sumiC'?'Cerrado':'Sul';
+  D[key].w=FACTORS.map(()=>0);
+  D[key].s=Object.fromEntries(PRODUCTS.map(p=>[p,FACTORS.map(()=>'')]));
+  WS[r].weights={};WS[r].scores={};
+  FACTORS.forEach(f=>{WS[r].weights[f.id]=0;WS[r].scores[f.id]={};PRODUCTS.forEach(p=>{WS[r].scores[f.id][p]='';});});
+  renderVmTable(key);
+  if(CH[{sumiC:'ch-sumiC',sumiS:'ch-sumiS'}[key]]) drawScatter({sumiC:'ch-sumiC',sumiS:'ch-sumiS'}[key],key);
+  updateStatus();
+}
+function vmExportCSV(key){
+  const label=key==='sumiC'?'Cerrado':'Sul';
+  const rows=[['Region','Factor','Importância (%)',...PRODUCTS,'Benefit (Excalia Max)'].join(';')];
+  FACTORS.forEach((f,i)=>{rows.push([label,f.name,D[key].w[i]||0,...PRODUCTS.map(p=>parseFloat(D[key].s[p][i])||0),benefit(key,'Excalia Max').toFixed(4)].join(';'));});
+  rows.push(['','BENEFIT','',...PRODUCTS.map(p=>benefit(key,p).toFixed(4)),''].join(';'));
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8;'}));
+  a.download=`ValueMap_Sumitomo_${label}.csv`;a.click();
+}
+
+// ═══════════════════════════════════════════════
+// PRICES TABLE
+// ═══════════════════════════════════════════════
+function renderPrices(){
+  document.getElementById('pt-body').innerHTML=PRODUCTS.map(p=>{
+    const d=PRC[p],em=p==='Excalia Max';
+    return`<tr><td class="pnm${em?' em':''}">${p}</td>
+      <td class="num"><input class="ptin" type="number" step="0.01" value="${d.brl}" oninput="updP('${p}','brl',this.value)"/></td>
+      <td class="num"><input class="ptin" type="number" step="0.01" value="${d.usd}" oninput="updP('${p}','usd',this.value)"/></td>
+      <td class="num"><input class="ptin" type="number" step="0.01" value="${d.dose}" oninput="updP('${p}','dose',this.value)"/></td>
+      <td class="num" id="pc-${p.replace(/ /g,'_')}">${C(p).toFixed(2)}</td>
+      <td class="num">${(d.share*100).toFixed(0)}%</td></tr>`;
+  }).join('');
+}
+function updP(p,f,v){
+  PRC[p][f]=parseFloat(v)||0;
+  // Update cost display in prices tab
+  const el=document.getElementById('pc-'+p.replace(/ /g,'_'));
+  if(el) el.textContent=C(p).toFixed(2);
+  // Update cost/price/dose cells in all VM tables (without re-rendering the whole table)
+  const pi=PRODUCTS.indexOf(p);
+  ['farmC','farmS','exp','sumiC','sumiS'].forEach(key=>{
+    const cc=document.querySelector(`#tbl-${key} tr.rc td:nth-child(${pi+3})`);
+    if(cc) cc.textContent=C(p).toFixed(1);
+    const pc=document.querySelector(`#tbl-${key} tr.rp td:nth-child(${pi+3})`);
+    if(pc) pc.textContent=PRC[p].usd.toFixed(1);
+    const dc=document.querySelector(`#tbl-${key} tr.rd td:nth-child(${pi+3})`);
+    if(dc) dc.textContent=PRC[p].dose;
+    // Recalc fair cost + diff
+    const bens=allBens(key);
+    const {fc}=fairLine(bens);
+    const fce=document.getElementById(`vfc_${key}_${pi}`);
+    if(fce) fce.textContent=fc[pi]>0?fc[pi].toFixed(1):'—';
+    const dfe=document.getElementById(`vdf_${key}_${pi}`);
+    if(dfe){const d=C(PRODUCTS[pi])-fc[pi];dfe.innerHTML=`<span class="${d>=0?'neg':'pos'}">${d>=0?'+':''}${d.toFixed(1)}</span>`;}
+    refreshChart(key);
+  });
+}
+
+// ═══════════════════════════════════════════════
+// FIREBASE LIVE SYNC
+// Called by the Firebase module whenever new votes arrive
+// Computes averages and applies them to WS + D.sumiC / D.sumiS
+// ═══════════════════════════════════════════════
+const FB_COUNTS = {Cerrado:0, Sul:0};
+
+window.applyFirebaseVotes = function(teamKey, avgW, avgS, voteCount){
+  FB_COUNTS[teamKey] = voteCount;
+
+  const wsT   = teamKey;
+  const vmKey = teamKey==='Sul'?'sumiS':'sumiC';
+
+  // 1. Apply average weights (0-100 for sumi)
+  FACTORS.forEach((f,i)=>{
+    const v = Math.round(avgW[f.id]||0);
+    WS[wsT].weights[f.id] = v;
+    D[vmKey].w[i] = v;
+  });
+
+  // 2. Apply average scores
+  FACTORS.forEach((f,i)=>{
+    PRODUCTS.forEach(p=>{
+      const v = parseFloat((avgS[f.id]?.[p]||0).toFixed(1));
+      WS[wsT].scores[f.id][p] = v;
+      D[vmKey].s[p][i] = v;
+    });
+  });
+
+  // 3. Re-render the full Sumitomo VM table (rebuilds all HTML with correct values)
+  renderVmTable(vmKey);
+
+  // 4. Update Exercício Workshop if that tab is visible for this team
+  const wsVisible = document.getElementById('s-ws') &&
+                    document.getElementById('s-ws').style.display !== 'none' &&
+                    wsTeam === wsT;
+  if(wsVisible){
+    renderWeights();
+    if(document.getElementById('sec-scores') && document.getElementById('sec-scores').style.display !== 'none') renderScores();
+    if(document.getElementById('sec-results') && document.getElementById('sec-results').style.display !== 'none') renderResults();
+  }
+
+  // 5. Refresh chart if Sumitomo tab is open
+  const cid = vmKey==='sumiC'?'ch-sumiC':'ch-sumiS';
+  if(CH[cid]) drawScatter(cid, vmKey);
+
+  // 6. Refresh alignment chart if open
+  if(CH['ch-cmp']) drawCompare(cmpReg);
+
+  updateStatus();
+};
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+renderPrices();
+['farmC','farmS','exp','sumiC','sumiS'].forEach(renderVmTable);
+renderWeights();
+document.getElementById('team-sw').style.display='flex';
+updateStatus();
+</script>
+</body>
+</html>

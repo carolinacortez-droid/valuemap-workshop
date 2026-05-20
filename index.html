@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Value Map — Workshop Vote</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<!-- ══════════════════════════════════════════
+     FIREBASE CONFIG — PASTE YOUR CONFIG HERE
+     Get it from: Firebase Console → Project Settings → Your apps → SDK setup
+     ══════════════════════════════════════════ -->
+<script type="module">
+import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, serverTimestamp }
+                               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ▼▼▼ PASTE YOUR FIREBASE CONFIG OBJECT HERE ▼▼▼
+const firebaseConfig = {
+  apiKey:            "AIzaSyBAiGoOALn1R7TEL3RDjUHLMmVYdD-ASPI",
+  authDomain:        "valuemap-workshop.firebaseapp.com",
+  databaseURL:       "https://valuemap-workshop-default-rtdb.firebaseio.com",
+  projectId:         "valuemap-workshop",
+  storageBucket:     "valuemap-workshop.firebasestorage.app",
+  messagingEnviarerId: "195141627500",
+  appId:             "1:195141627500:web:8aa36c785c21e84b5cf249"
+};
+// ▲▲▲ END OF CONFIG ▲▲▲
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ── detect team from URL ──
+const team = new URLSearchParams(location.search).get('team') || 'Cerrado'; // 'Cerrado' or 'Sul'
+window._TEAM = team;
+window._DB   = db;
+window._REF  = ref;
+window._PUSH = push;
+window._SET  = set;
+window._TS   = serverTimestamp;
+window._FIREBASE_READY = true;
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g8:#085041;--g7:#0F6E56;--g5:#1D9E75;--g3:#5DCAA5;--g0:#E1F5EE;
+  --b8:#0C447C;--b0:#E6F1FB;--b2:#85B7EB;
+  --a5:#BA7517;--a0:#FAEEDA;
+  --r5:#A32D2D;--r0:#FCEBEB;
+  --gy9:#141414;--gy7:#333;--gy5:#666;--gy4:#888;--gy2:#ccc;--gy1:#f0f0ee;--gy0:#f8f8f6;
+  --bdr:rgba(0,0,0,0.09);--bdrm:rgba(0,0,0,0.15);
+}
+html,body{min-height:100vh;background:var(--gy0)}
+body{font-family:'DM Sans',sans-serif;color:var(--gy9);padding-bottom:40px}
+
+/* HEADER */
+.hdr{background:var(--g8);padding:14px 18px;display:flex;align-items:center;gap:12px}
+.hdot{width:34px;height:34px;border-radius:50%;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--g8);flex-shrink:0}
+.htitle{font-size:15px;font-weight:500;color:#fff}
+.hsub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+.team-badge{margin-left:auto;font-size:12px;font-weight:600;padding:5px 13px;border-radius:20px;background:var(--g3);color:var(--g8);flex-shrink:0}
+
+/* PROGRESS STEPS */
+.progress{display:flex;background:#fff;border-bottom:1px solid var(--bdr)}
+.pstep{flex:1;padding:11px 8px;text-align:center;font-size:11px;font-weight:500;color:var(--gy4);border-bottom:2px solid transparent;transition:all .2s}
+.pstep.active{color:var(--g8);border-bottom-color:var(--g5)}
+.pstep.done{color:var(--g7)}
+.pnum{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--gy1);color:var(--gy4);font-size:11px;font-weight:600;margin-bottom:3px}
+.pstep.active .pnum{background:var(--g5);color:#fff}
+.pstep.done .pnum{background:var(--g0);color:var(--g7)}
+
+.wrap{max-width:480px;margin:0 auto;padding:16px 14px}
+
+/* CARD */
+.card{background:#fff;border-radius:12px;border:1px solid var(--bdr);padding:16px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.card-title{font-size:14px;font-weight:600;color:var(--gy9);margin-bottom:4px}
+.card-desc{font-size:12px;color:var(--gy5);line-height:1.5;margin-bottom:16px}
+
+/* WEIGHT ROWS */
+.wrow{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid var(--bdr)}
+.wrow:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.wlabel{font-size:12px;font-weight:500;color:var(--gy7);margin-bottom:6px;line-height:1.4}
+.wid{font-size:10px;font-weight:600;color:var(--gy2);font-family:'DM Mono',monospace;margin-bottom:3px}
+.wslider-wrap{display:flex;align-items:center;gap:10px}
+.wslider{flex:1;-webkit-appearance:none;appearance:none;height:6px;border-radius:3px;background:var(--gy1);outline:none}
+.wslider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--g5);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
+.wslider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--g5);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);cursor:pointer}
+.wnum-display{font-size:15px;font-weight:600;font-family:'DM Mono',monospace;color:var(--g7);min-width:44px;text-align:right}
+.wbar-track{height:4px;background:var(--gy1);border-radius:2px;margin-top:5px;overflow:hidden}
+.wbar-fill{height:100%;border-radius:2px;transition:width .2s;background:var(--g5)}
+
+/* TOTAL */
+.total-box{background:var(--g0);border-radius:10px;border:1px solid var(--g3);padding:10px 14px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.total-lbl{font-size:13px;color:var(--g7)}
+.total-val{font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:var(--g7)}
+.total-val.warn{color:var(--a5)}
+.total-val.bad{color:var(--r5)}
+
+/* SCORE TABLE */
+.score-section{margin-bottom:18px}
+.score-section-title{font-size:12px;font-weight:600;color:var(--gy5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.product-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.product-name{font-size:12px;font-weight:500;color:var(--gy7);width:90px;flex-shrink:0;line-height:1.3}
+.product-name.em{color:var(--g7);font-weight:600}
+.score-slider{flex:1;-webkit-appearance:none;appearance:none;height:5px;border-radius:3px;background:var(--gy1);outline:none}
+.score-slider::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--g5);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.2);cursor:pointer}
+.score-slider.em-slider::-webkit-slider-thumb{background:var(--g5)}
+.score-val{font-size:14px;font-weight:600;font-family:'DM Mono',monospace;min-width:32px;text-align:right;color:var(--gy7)}
+.score-val.em{color:var(--g7)}
+
+/* FACTOR TABS */
+.ftabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.ftab{padding:5px 11px;font-size:11px;font-weight:500;border-radius:6px;border:1px solid var(--bdr);background:var(--gy0);color:var(--gy5);cursor:pointer;font-family:inherit;transition:all .15s}
+.ftab.done{background:var(--g0);color:var(--g7);border-color:var(--g3)}
+.ftab.active{background:var(--g5);color:#fff;border-color:var(--g5)}
+.factor-info{background:var(--gy0);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:12px;color:var(--gy5);line-height:1.5}
+.factor-info strong{color:var(--gy7);font-weight:500}
+
+/* SUBMIT */
+.btn{width:100%;padding:14px;font-size:15px;font-weight:600;border-radius:10px;border:none;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-main{background:var(--g8);color:#fff}
+.btn-main:hover{background:var(--g7)}
+.btn-main:disabled{background:var(--gy2);cursor:not-allowed}
+.btn-ghost{background:transparent;color:var(--gy5);border:1px solid var(--bdr);margin-bottom:8px}
+.btn-ghost:hover{background:var(--gy1)}
+.btn-next{background:var(--g0);color:var(--g8);border:1px solid var(--g3)}
+.btn-next:hover{background:var(--g3)}
+
+/* RESULT */
+.result-box{text-align:center;padding:28px 16px}
+.result-icon{font-size:48px;margin-bottom:12px}
+.result-title{font-size:20px;font-weight:600;color:var(--g8);margin-bottom:8px}
+.result-desc{font-size:13px;color:var(--gy5);line-height:1.6}
+.result-team{display:inline-block;margin-top:12px;padding:5px 16px;border-radius:20px;background:var(--g0);color:var(--g7);font-size:13px;font-weight:600}
+
+/* STATUS TOAST */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gy9);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--gy1);border-top-color:var(--g5);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdot">EM</div>
+  <div>
+    <div class="htitle">Value Map Workshop</div>
+    <div class="hsub">Excalia Max — Sumitomo</div>
+  </div>
+  <span class="team-badge" id="team-badge">…</span>
+</header>
+
+<div style="display:flex;background:#fff;border-bottom:1px solid var(--bdr)" id="progress-bar">
+  <div class="pstep active" id="ps1"><div class="pnum">1</div><div>Pesos</div></div>
+  <div class="pstep" id="ps2"><div class="pnum">2</div><div>Notas</div></div>
+  <div class="pstep" id="ps3"><div class="pnum">3</div><div>Enviar</div></div>
+</div>
+
+<div class="wrap">
+  <div class="loading" id="loading-screen">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--gy5)">Conectando…</div>
+  </div>
+
+  <!-- STEP 1: WEIGHTS -->
+  <div id="step-weights" style="display:none">
+    <div class="card">
+      <div class="card-title">Importância dos fatores</div>
+      <div class="card-desc">Distribua 100% entre os 7 fatores de compra. Use os controles deslizantes. O total deve ser exatamente 100%.</div>
+      <div id="weights-rows"></div>
+    </div>
+    <div class="total-box">
+      <span class="total-lbl">Total</span>
+      <span class="total-val" id="w-total">0%</span>
+    </div>
+    <button class="btn btn-next" id="btn-to-scores" onclick="goStep(2)" disabled>
+      Próximo: Avaliar produtos →
+    </button>
+  </div>
+
+  <!-- STEP 2: SCORES -->
+  <div id="step-scores" style="display:none">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="factor-tabs"></div>
+    <div class="card" id="score-card">
+      <div class="factor-info" id="factor-info"></div>
+      <div id="score-rows"></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <button class="btn btn-ghost" style="flex:1" onclick="prevFator()">← Anterior</button>
+      <button class="btn btn-next" style="flex:1" id="btn-next-factor" onclick="nextFator()">Próximo →</button>
+    </div>
+    <button class="btn btn-ghost" onclick="goStep(1)">← Voltar aos pesos</button>
+  </div>
+
+  <!-- STEP 3: CONFIRM & SUBMIT -->
+  <div id="step-confirm" style="display:none">
+    <div class="card">
+      <div class="card-title">Revisar e enviar</div>
+      <div class="card-desc">Confira abaixo se tudo está correto antes de enviar.</div>
+      <div id="summary"></div>
+    </div>
+    <button class="btn btn-main" id="btn-submit" onclick="submitVote()">
+      ✓ Enviar minha resposta
+    </button>
+    <div style="margin-top:8px">
+      <button class="btn btn-ghost" onclick="goStep(2)">← Voltar e editar</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: DONE -->
+  <div id="step-done" style="display:none">
+    <div class="card">
+      <div class="result-box">
+        <div class="result-icon">✅</div>
+        <div class="result-title">Resposta enviada!</div>
+        <div class="result-desc">
+          Sua avaliação foi registrada e já está sendo consolidada com a do seu grupo.<br><br>
+          O facilitador verá os resultados em tempo real.
+        </div>
+        <div class="result-team" id="done-team"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const FACTORS = [
+  {id:1,short:'Espectro de Controle',name:'Espectro de controle – Controle de Ferrugem + Manchas Foliares (Mancha-alvo, Cercospora e Septoria)'},
+  {id:2,short:'Manchas Foliares',name:'Eficiência de controle de manchas foliares (Mancha-alvo e Septoria) – (controle acima de 80%)'},
+  {id:3,short:'Ferrugem',name:'Eficiência de controle de ferrugem – (controle acima de 80%)'},
+  {id:4,short:'Cercospora',name:'Eficiência de controle de Cercospora – (controle acima de 80%)'},
+  {id:5,short:'Antracnose',name:'Eficiência de controle de Antracnose – (controle acima de 80%)'},
+  {id:6,short:'Novo MOA',name:'Novo Modo de Ação / Molécula Nova'},
+  {id:7,short:'Fitotoxicidade',name:'Fitotoxicidade e Seletividade'}
+];
+const PRODUCTS = ['Excalia Max','Fox Xpro','Fox Supra','Alade','Miravis Pro','Mitrion','Belyan','Blavity'];
+
+let team = 'Cerrado';
+let curFator = 0;
+let weights = {};  // {fid: 0-100}
+let scores  = {};  // {fid: {prod: 0-10}}
+
+FACTORS.forEach(f=>{ weights[f.id]=0; scores[f.id]={}; PRODUCTS.forEach(p=>scores[f.id][p]=5); });
+
+// Init after Firebase loads
+function init(){
+  team = window._TEAM || new URLSearchParams(location.search).get('team') || 'Cerrado';
+  document.getElementById('team-badge').textContent = team === 'Sul' ? 'Sul' : team;
+  document.getElementById('done-team').textContent  = team === 'Sul' ? 'Equipe Sul' : 'Equipe Cerrado';
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('step-weights').style.display='';
+  renderPesos();
+  renderFatorTabs();
+}
+
+if(window._FIREBASE_READY){ init(); }
+else { window.addEventListener('firebase-ready', init); }
+
+// ── NAVIGATION ──
+function goStep(n){
+  ['weights','scores','confirm','done'].forEach((s,i)=>{
+    document.getElementById('step-'+s).style.display=i+1===n?'':'none';
+  });
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById('ps'+i);
+    el.classList.toggle('active',i===n);
+    el.classList.toggle('done',i<n);
+  });
+  if(n===2){ curFator=0; renderScoreStep(); }
+  if(n===3){ renderSummary(); }
+}
+
+// ── WEIGHTS ──
+function renderPesos(){
+  document.getElementById('weights-rows').innerHTML = FACTORS.map(f=>{
+    const v=weights[f.id]||0;
+    return`<div class="wrow">
+      <div class="wid">F${f.id}</div>
+      <div class="wlabel">${f.name}</div>
+      <div class="wslider-wrap">
+        <input type="range" class="wslider" min="0" max="100" step="1" value="${v}"
+          oninput="updW(${f.id},this.value)" id="ws${f.id}"/>
+        <span class="wnum-display" id="wv${f.id}">${v}%</span>
+      </div>
+      <div class="wbar-track"><div class="wbar-fill" id="wbf${f.id}" style="width:${v}%"></div></div>
+    </div>`;
+  }).join('');
+  refreshWTotal();
+}
+function updW(fid,v){
+  weights[fid]=parseInt(v)||0;
+  document.getElementById('wv'+fid).textContent=v+'%';
+  document.getElementById('wbf'+fid).style.width=v+'%';
+  refreshWTotal();
+}
+function refreshWTotal(){
+  const t=Object.values(weights).reduce((a,b)=>a+b,0);
+  const el=document.getElementById('w-total');
+  el.textContent=t+'%';
+  el.className='total-val'+(t===100?' '+(t>100?' bad':''):t>100?' bad':' warn');
+  const btn=document.getElementById('btn-to-scores');
+  if(btn) btn.disabled=t!==100;
+}
+
+// ── SCORE STEPS ──
+function renderFatorTabs(){
+  document.getElementById('factor-tabs').innerHTML = FACTORS.map((f,i)=>{
+    const done=PRODUCTS.every(p=>scores[f.id][p]>0);
+    return`<button class="ftab${i===curFator?' active':''}${done&&i!==curFator?' done':''}"
+      onclick="jumpFator(${i})" id="ft${i}">F${f.id}</button>`;
+  }).join('');
+}
+function renderScoreStep(){
+  const f=FACTORS[curFator];
+  // update tabs
+  FACTORS.forEach((_,i)=>{
+    const el=document.getElementById('ft'+i);
+    if(!el) return;
+    const done=PRODUCTS.every(p=>scores[FACTORS[i].id][p]>=0);
+    el.className='ftab'+(i===curFator?' active':done?' done':'');
+  });
+  document.getElementById('factor-info').innerHTML=
+    `<strong>F${f.id}</strong> — ${f.name}`;
+  document.getElementById('score-rows').innerHTML = PRODUCTS.map(p=>{
+    const v=scores[f.id][p]??5; const em=p==='Excalia Max';
+    return`<div class="product-row">
+      <span class="product-name${em?' em':''}">${p}</span>
+      <input type="range" class="score-slider${em?' em-slider':''}" min="0" max="10" step="0.5"
+        value="${v}" oninput="updS(${f.id},'${p}',this.value)" id="sc${f.id}_${p.replace(/ /g,'_')}"/>
+      <span class="score-val${em?' em':''}" id="sv${f.id}_${p.replace(/ /g,'_')}">${v}</span>
+    </div>`;
+  }).join('');
+  // nav buttons
+  const nextBtn=document.getElementById('btn-next-factor');
+  if(nextBtn) nextBtn.textContent=curFator<FACTORS.length-1?'Próximo fator →':'Ver resumo →';
+}
+function updS(fid,prod,v){
+  scores[fid][prod]=parseFloat(v);
+  const el=document.getElementById('sv'+fid+'_'+prod.replace(/ /g,'_'));
+  if(el) el.textContent=v;
+}
+function jumpFator(i){curFator=i;renderScoreStep();}
+function prevFator(){if(curFator>0){curFator--;renderScoreStep();}else goStep(1);}
+function nextFator(){
+  if(curFator<FACTORS.length-1){curFator++;renderScoreStep();}
+  else goStep(3);
+}
+
+// ── SUMMARY ──
+function renderSummary(){
+  let h='<table style="width:100%;border-collapse:collapse;font-size:12px">';
+  h+='<tr><th style="text-align:left;padding:6px 4px;border-bottom:1px solid var(--bdr);color:var(--gy4);font-size:10px;text-transform:uppercase;letter-spacing:.06em">Fator</th>';
+  h+='<th style="padding:6px 4px;border-bottom:1px solid var(--bdr);color:var(--gy4);font-size:10px;text-transform:uppercase;letter-spacing:.06em">Peso</th></tr>';
+  FACTORS.forEach(f=>{
+    h+=`<tr><td style="padding:6px 4px;border-bottom:1px solid var(--bdr);color:var(--gy7);font-size:11px">${f.short}</td>
+      <td style="padding:6px 4px;border-bottom:1px solid var(--bdr);text-align:center;font-family:'DM Mono',monospace;font-weight:600;color:var(--g7)">${weights[f.id]}%</td></tr>`;
+  });
+  h+='</table>';
+  h+='<div style="font-size:11px;color:var(--gy5);margin:10px 0 4px">Suas notas foram registradas para todos os 7 fatores.</div>';
+  document.getElementById('summary').innerHTML=h;
+}
+
+// ── SUBMIT ──
+async function submitVote(){
+  const btn=document.getElementById('btn-submit');
+  btn.disabled=true; btn.textContent='Enviando…';
+
+  try {
+    const db=window._DB, ref=window._REF, push=window._PUSH, set=window._SET, ts=window._TS;
+    const teamKey=team==='Sul'?'Sul':'Cerrado';
+
+    // Build payload
+    const payload = {
+      team: teamKey,
+      timestamp: ts(),
+      weights: {...weights},
+      scores: {}
+    };
+    FACTORS.forEach(f=>{ payload.scores[f.id]={...scores[f.id]}; });
+
+    // Push to Firebase: /votes/{teamKey}/{voteId}
+    const newRef = push(ref(db, `votes/${teamKey}`));
+    await set(newRef, payload);
+
+    showToast('Resposta enviada com sucesso!');
+    goStep(4);
+  } catch(err){
+    btn.disabled=false;
+    btn.textContent='✓ Enviar minha resposta';
+    showToast('Erro ao enviar. Verifique a conexão.');
+    console.error(err);
+  }
+}
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+</script>
+
+<!-- QR CODE PAGE - shows when URL has ?qr param -->
+<div id="qr-page" style="display:none;font-family:'Segoe UI',sans-serif;background:#f0f4f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px">
+  <div style="font-size:20px;font-weight:700;color:#085041;margin-bottom:6px;text-align:center">Value Map Workshop — Excalia Max</div>
+  <div style="font-size:13px;color:#666;margin-bottom:32px;text-align:center">Escaneie o QR Code da sua equipe e responda no celular</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px;max-width:700px;width:100%">
+    <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:6px solid #1D9E75">
+      <div style="font-size:22px;font-weight:700;color:#085041;margin-bottom:4px">Equipe Cerrado</div>
+      <div style="font-size:12px;color:#888;margin-bottom:16px">Escaneie para votar</div>
+      <canvas id="qr-c"></canvas>
+      <div style="font-size:10px;color:#aaa;word-break:break-all;background:#f8f8f6;border-radius:6px;padding:6px 8px;font-family:monospace;margin-top:12px">https://wonderful-rabanadas-24005a.netlify.app?team=Cerrado</div>
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:28px 24px;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.08);border-top:6px solid #185FA5">
+      <div style="font-size:22px;font-weight:700;color:#0C447C;margin-bottom:4px">Equipe Sul</div>
+      <div style="font-size:12px;color:#888;margin-bottom:16px">Escaneie para votar</div>
+      <canvas id="qr-s"></canvas>
+      <div style="font-size:10px;color:#aaa;word-break:break-all;background:#f8f8f6;border-radius:6px;padding:6px 8px;font-family:monospace;margin-top:12px">https://wonderful-rabanadas-24005a.netlify.app?team=Sul</div>
+    </div>
+  </div>
+  <button onclick="window.print()" style="margin-top:32px;padding:12px 32px;font-size:14px;font-weight:600;border-radius:10px;border:none;background:#085041;color:#fff;cursor:pointer">Imprimir QR Codes</button>
+</div>
+
+<script>
+// Show QR page if URL has ?qr param
+if(new URLSearchParams(location.search).get('qr') !== null){
+  document.getElementById('qr-page').style.display='flex';
+  document.querySelector('.hdr') && (document.querySelector('.hdr').style.display='none');
+  document.getElementById('progress-bar') && (document.getElementById('progress-bar').style.display='none');
+  document.querySelector('.wrap') && (document.querySelector('.wrap').style.display='none');
+  
+  // Load QRCode lib dynamically
+  var s=document.createElement('script');
+  s.src='https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
+  s.onload=function(){
+    QRCode.toCanvas(document.getElementById('qr-c'),
+      'https://wonderful-rabanadas-24005a.netlify.app?team=Cerrado',
+      {width:200,margin:1,color:{dark:'#085041',light:'#ffffff'}});
+    QRCode.toCanvas(document.getElementById('qr-s'),
+      'https://wonderful-rabanadas-24005a.netlify.app?team=Sul',
+      {width:200,margin:1,color:{dark:'#0C447C',light:'#ffffff'}});
+  };
+  document.head.appendChild(s);
+}
+</script>
+
+</body>
+</html>
