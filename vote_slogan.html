@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Vote — Excalia Max</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script type="module">
+import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, push, set, onValue, serverTimestamp }
+                               from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyBAiGoOALn1R7TEL3RDjUHLMmVYdD-ASPI",
+  authDomain:        "valuemap-workshop.firebaseapp.com",
+  databaseURL:       "https://valuemap-workshop-default-rtdb.firebaseio.com",
+  projectId:         "valuemap-workshop",
+  storageBucket:     "valuemap-workshop.firebasestorage.app",
+  messagingSenderId: "195141627500",
+  appId:             "1:195141627500:web:8aa36c785c21e84b5cf249"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+window._DB  = db;
+window._REF = ref;
+window._PUSH = push;
+window._SET = set;
+window._TS  = serverTimestamp;
+window._ONVALUE = onValue;
+window.dispatchEvent(new Event('firebase-ready'));
+</script>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --g8:#085041;--g5:#1D9E75;--g3:#5DCAA5;--g0:#E1F5EE;
+  --gy9:#141414;--gy7:#333;--gy5:#666;--gy2:#ccc;--gy1:#f0f0ee;--gy0:#f8f8f6;
+  --bdr:rgba(0,0,0,0.09);
+}
+html,body{min-height:100vh;background:var(--gy0)}
+body{font-family:'DM Sans',sans-serif;color:var(--gy9);padding-bottom:40px}
+
+.hdr{background:var(--g8);padding:14px 18px;display:flex;align-items:center;gap:12px}
+.hdot{width:34px;height:34px;border-radius:50%;background:var(--g3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--g8);flex-shrink:0}
+.htitle{font-size:15px;font-weight:500;color:#fff}
+.hsub{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}
+
+.wrap{max-width:520px;margin:0 auto;padding:20px 16px}
+
+/* VOTER VIEW */
+.vote-title{font-size:18px;font-weight:600;color:var(--gy9);margin-bottom:6px;text-align:center}
+.vote-sub{font-size:13px;color:var(--gy5);margin-bottom:24px;text-align:center;line-height:1.5}
+
+.phrase-card{background:#fff;border:2px solid var(--bdr);border-radius:14px;padding:20px;margin-bottom:12px;cursor:pointer;transition:all .2s;position:relative}
+.phrase-card:hover{border-color:var(--g3);background:var(--g0)}
+.phrase-card.selected{border-color:var(--g5);background:var(--g0);box-shadow:0 0 0 3px rgba(29,158,117,.15)}
+.phrase-num{font-size:10px;font-weight:600;color:var(--gy2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;font-family:monospace}
+.phrase-text{font-size:16px;font-weight:500;color:var(--gy9);line-height:1.5}
+.phrase-card.selected .phrase-text{color:var(--g8)}
+.check{position:absolute;top:16px;right:16px;width:24px;height:24px;border-radius:50%;background:var(--g5);display:none;align-items:center;justify-content:center;color:#fff;font-size:14px}
+.phrase-card.selected .check{display:flex}
+
+.btn-vote{width:100%;padding:14px;font-size:15px;font-weight:600;border-radius:10px;border:none;cursor:pointer;font-family:inherit;background:var(--g8);color:#fff;margin-top:8px;transition:all .2s}
+.btn-vote:disabled{background:var(--gy2);cursor:not-allowed}
+.btn-vote:hover:not(:disabled){background:#0F6E56}
+
+/* DONE VIEW */
+.done-box{text-align:center;padding:32px 16px}
+.done-icon{font-size:52px;margin-bottom:12px}
+.done-title{font-size:20px;font-weight:600;color:var(--g8);margin-bottom:8px}
+.done-desc{font-size:13px;color:var(--gy5);line-height:1.6}
+
+/* RESULTS VIEW (facilitator) */
+.results-title{font-size:18px;font-weight:600;color:var(--gy9);margin-bottom:4px}
+.results-sub{font-size:13px;color:var(--gy5);margin-bottom:20px}
+.result-row{background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;border:1px solid var(--bdr)}
+.result-row.winner{border-color:var(--g5);background:var(--g0)}
+.result-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.result-phrase{font-size:14px;font-weight:500;color:var(--gy9);line-height:1.4;flex:1;margin-right:12px}
+.result-row.winner .result-phrase{color:var(--g8);font-weight:600}
+.result-count{font-size:18px;font-weight:700;color:var(--g5);flex-shrink:0}
+.result-row.winner .result-count{font-size:22px}
+.bar-track{height:8px;background:var(--gy1);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px;background:var(--g5);transition:width .5s}
+.result-row.winner .bar-fill{background:var(--g8)}
+.total-votes{text-align:center;font-size:13px;color:var(--gy5);margin-top:14px}
+.crown{font-size:18px;margin-right:4px}
+
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gy9);color:#fff;font-size:12px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+
+.loading{display:flex;align-items:center;justify-content:center;min-height:50vh;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--gy1);border-top-color:var(--g5);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="hdot">EM</div>
+  <div>
+    <div class="htitle">Excalia Max — Vote na melhor frase</div>
+    <div class="hsub" id="hdr-sub">Sumitomo · Workshop</div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- LOADING -->
+  <div id="view-loading" class="loading">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--gy5)">Carregando…</div>
+  </div>
+
+  <!-- VOTER VIEW -->
+  <div id="view-vote" style="display:none">
+    <div class="vote-title">Qual frase representa melhor o Excalia Max?</div>
+    <div class="vote-sub">Selecione a frase que você mais gosta e clique em Votar.</div>
+    <div id="phrases-list"></div>
+    <button class="btn-vote" id="btn-vote" disabled onclick="submitVote()">Votar</button>
+  </div>
+
+  <!-- DONE VIEW -->
+  <div id="view-done" style="display:none">
+    <div class="done-box">
+      <div class="done-icon">✅</div>
+      <div class="done-title">Voto registrado!</div>
+      <div class="done-desc">Obrigado pela sua participação.<br>O facilitador verá os resultados em tempo real.</div>
+    </div>
+  </div>
+
+  <!-- RESULTS VIEW (facilitator) -->
+  <div id="view-results" style="display:none">
+    <div class="results-title">Resultado da votação</div>
+    <div class="results-sub" id="results-sub">Atualiza em tempo real</div>
+    <div id="results-list"></div>
+    <div class="total-votes" id="total-votes"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════
+// AS 5 FRASES — EDITE AQUI ANTES DO WORKSHOP
+// ══════════════════════════════════════
+const FRASES = [
+  "FRASE 1 — Substituir pela frase síntese gerada no workshop",
+  "FRASE 2 — Substituir pela frase síntese gerada no workshop",
+  "FRASE 3 — Substituir pela frase síntese gerada no workshop",
+  "FRASE 4 — Substituir pela frase síntese gerada no workshop",
+  "FRASE 5 — Substituir pela frase síntese gerada no workshop"
+];
+// ══════════════════════════════════════
+
+const params = new URLSearchParams(location.search);
+const isResults = params.get('results') !== null;
+let selected = null;
+let hasVoted = sessionStorage.getItem('slogan_voted') === '1';
+
+function showView(id){
+  ['loading','vote','done','results'].forEach(v=>
+    document.getElementById('view-'+v).style.display = v===id ? '' : 'none'
+  );
+}
+
+function init(){
+  if(isResults){
+    document.getElementById('hdr-sub').textContent = 'Resultados ao vivo';
+    showView('results');
+    listenResults();
+    return;
+  }
+  if(hasVoted){
+    showView('done');
+    return;
+  }
+  renderPhrases();
+  showView('vote');
+}
+
+function renderPhrases(){
+  document.getElementById('phrases-list').innerHTML = FRASES.map((f,i)=>`
+    <div class="phrase-card" id="pc${i}" onclick="selectPhrase(${i})">
+      <div class="phrase-num">Frase ${i+1}</div>
+      <div class="phrase-text">${f}</div>
+      <div class="check">✓</div>
+    </div>
+  `).join('');
+}
+
+function selectPhrase(i){
+  selected = i;
+  FRASES.forEach((_,j)=>{
+    document.getElementById('pc'+j).classList.toggle('selected', j===i);
+  });
+  document.getElementById('btn-vote').disabled = false;
+}
+
+async function submitVote(){
+  if(selected === null) return;
+  const btn = document.getElementById('btn-vote');
+  btn.disabled = true; btn.textContent = 'Enviando…';
+  try {
+    const db=window._DB, ref=window._REF, push=window._PUSH, set=window._SET, ts=window._TS;
+    const newRef = push(ref(db, 'slogan_votes'));
+    await set(newRef, { frase: selected, timestamp: ts() });
+    sessionStorage.setItem('slogan_voted','1');
+    showView('done');
+  } catch(e){
+    btn.disabled = false; btn.textContent = 'Votar';
+    showToast('Erro ao enviar. Tente novamente.');
+    console.error(e);
+  }
+}
+
+function listenResults(){
+  const db=window._DB, ref=window._REF, onValue=window._ONVALUE;
+  onValue(ref(db,'slogan_votes'), snap=>{
+    const counts = FRASES.map(()=>0);
+    let total = 0;
+    snap.forEach(child=>{
+      const v = child.val();
+      if(v && v.frase >= 0 && v.frase < FRASES.length){
+        counts[v.frase]++;
+        total++;
+      }
+    });
+    renderResults(counts, total);
+  });
+}
+
+function renderResults(counts, total){
+  document.getElementById('results-sub').textContent =
+    total + ' voto' + (total!==1?'s':'') + ' recebido' + (total!==1?'s':'');
+  document.getElementById('total-votes').textContent =
+    total > 0 ? 'Total: ' + total + ' votos' : 'Aguardando votos…';
+
+  const max = Math.max(...counts);
+  const sorted = counts.map((c,i)=>({i,c})).sort((a,b)=>b.c-a.c);
+
+  document.getElementById('results-list').innerHTML = sorted.map(({i,c})=>{
+    const pct = total > 0 ? Math.round(c/total*100) : 0;
+    const isWinner = c === max && max > 0;
+    return`<div class="result-row${isWinner?' winner':''}">
+      <div class="result-header">
+        <div class="result-phrase">${isWinner?'<span class="crown">👑</span>':''}${FRASES[i]}</div>
+        <div class="result-count">${c} <span style="font-size:13px;font-weight:400;color:var(--gy5)">(${pct}%)</span></div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+function showToast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+if(window._DB){ init(); }
+else { window.addEventListener('firebase-ready', init); }
+</script>
+</body>
+</html>
