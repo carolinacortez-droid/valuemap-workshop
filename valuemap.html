@@ -33,42 +33,57 @@ const db  = getDatabase(app);
 
 // ── Listen to votes in real time and compute averages ──
 function computeAvg(teamKey){
-  // teamKey = 'Cerrado' or 'Sul'
-  onValue(ref(db, `votes/${teamKey}`), snap => {
+  onValue(ref(db, 'votes/' + teamKey), function(snap) {
     const votes = [];
-    snap.forEach(child => votes.push(child.val()));
-    if(!votes.length) return;
-
-    const nF = 7;   // FACTORS.length
-    const PRODS = ['Excalia Max','Fox Xpro','Fox Supra','Alade','Miravis Pro','Mitrion','Belyan','Blavity'];
-    const FIDS  = [1,2,3,4,5,6,7];
-
-    // Average weights per factor
-    const avgW = {};
-    FIDS.forEach(fid => {
-      const vals = votes.map(v => parseFloat(v.weights?.[fid]) || 0);
-      avgW[fid] = vals.reduce((a,b)=>a+b,0) / vals.length;
+    snap.forEach(function(child) {
+      const v = child.val();
+      if(v && v.weights) votes.push(v);
     });
 
-    // Average scores per factor per product
+    console.log('[Firebase] ' + teamKey + ': ' + votes.length + ' votos recebidos');
+    if(!votes.length) return;
+
+    const PRODS = ['Excalia Max','Fox Xpro','Fox Supra','Alade','Miravis Pro','Mitrion','Belyan','Blavity'];
+    const FIDS  = [1,2,3,4,5,6,7];
+    const n = votes.length;
+
+    // Average weights
+    const avgW = {};
+    FIDS.forEach(function(fid) {
+      let sum = 0;
+      votes.forEach(function(v) {
+        const w = v.weights[fid] || v.weights[String(fid)] || 0;
+        sum += parseFloat(w) || 0;
+      });
+      avgW[fid] = sum / n;
+      console.log('[Firebase] ' + teamKey + ' F' + fid + ' avg=' + avgW[fid].toFixed(1));
+    });
+
+    // Average scores
     const avgS = {};
-    FIDS.forEach(fid => {
+    FIDS.forEach(function(fid) {
       avgS[fid] = {};
-      PRODS.forEach(p => {
-        const vals = votes.map(v => parseFloat(v.scores?.[fid]?.[p]) || 0);
-        avgS[fid][p] = vals.reduce((a,b)=>a+b,0) / vals.length;
+      PRODS.forEach(function(p) {
+        let sum = 0;
+        votes.forEach(function(v) {
+          const sc = (v.scores && v.scores[fid] && v.scores[fid][p]) ||
+                     (v.scores && v.scores[String(fid)] && v.scores[String(fid)][p]) || 0;
+          sum += parseFloat(sc) || 0;
+        });
+        avgS[fid][p] = sum / n;
       });
     });
 
-    // Fire update into the Value Map tool — wait until main script is ready
-    function tryApply(retries) {
+    // Apply to Value Map — retry until function is ready
+    let retries = 50;
+    function tryApply() {
       if(typeof window.applyFirebaseVotes === 'function'){
-        window.applyFirebaseVotes(teamKey, avgW, avgS, votes.length);
-      } else if(retries > 0) {
-        setTimeout(() => tryApply(retries - 1), 200);
+        window.applyFirebaseVotes(teamKey, avgW, avgS, n);
+      } else if(retries-- > 0) {
+        setTimeout(tryApply, 200);
       }
     }
-    tryApply(30);
+    tryApply();
   });
 }
 
